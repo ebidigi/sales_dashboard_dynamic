@@ -1,0 +1,1010 @@
+<!DOCTYPE html>
+<html lang="ja">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>稼働報酬チーム営業KPI確認シート | DigiMan</title>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        :root {
+            --primary-blue: #1A56DB;
+            --dark-navy: #0F2444;
+            --logo-gray: #5A6A7A;
+            --text-dark: #1E3A5F;
+            --text-light: #6B7280;
+            --bg-white: #FFFFFF;
+            --bg-light: #F8FAFC;
+            --border-color: #E5E7EB;
+            --success: #10B981;
+            --warning: #F59E0B;
+            --danger: #EF4444;
+        }
+
+        body {
+            font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+            background: var(--bg-light);
+            min-height: 100vh;
+            color: var(--text-dark);
+            padding: 0;
+        }
+
+        /* ヘッダー */
+        .top-header {
+            background: var(--bg-white);
+            border-bottom: 1px solid var(--border-color);
+            padding: 15px 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+        }
+
+        .logo svg {
+            width: 40px;
+            height: 40px;
+        }
+
+        .logo-text {
+            font-size: 1.4rem;
+            font-weight: 600;
+            color: var(--logo-gray);
+        }
+
+        .header-right {
+            display: flex;
+            align-items: center;
+            gap: 20px;
+        }
+
+        .last-updated {
+            font-size: 0.8rem;
+            color: var(--text-light);
+        }
+
+        .refresh-btn {
+            background: var(--primary-blue);
+            border: none;
+            color: white;
+            padding: 10px 20px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .refresh-btn:hover {
+            background: #1548B8;
+        }
+
+        .refresh-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        /* メインコンテンツ */
+        .dashboard {
+            max-width: 1400px;
+            margin: 0 auto;
+            padding: 30px;
+        }
+
+        .page-title {
+            margin-bottom: 30px;
+        }
+
+        .page-title h1 {
+            font-size: 1.5rem;
+            color: var(--text-dark);
+            font-weight: 600;
+            margin-bottom: 8px;
+        }
+
+        .page-title .subtitle {
+            font-size: 0.95rem;
+            color: var(--text-light);
+        }
+
+        .progress-badge {
+            display: inline-block;
+            background: var(--primary-blue);
+            color: white;
+            padding: 4px 12px;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 500;
+            margin-left: 15px;
+        }
+
+        /* ローディング */
+        .loading-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(255, 255, 255, 0.95);
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .loading-overlay.hidden {
+            display: none;
+        }
+
+        .spinner {
+            width: 40px;
+            height: 40px;
+            border: 3px solid var(--border-color);
+            border-top-color: var(--primary-blue);
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .loading-text {
+            color: var(--text-light);
+            font-size: 0.9rem;
+        }
+
+        /* KPIサマリー */
+        .kpi-summary {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .kpi-box {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .kpi-box.highlight {
+            background: var(--dark-navy);
+            border-color: var(--dark-navy);
+        }
+
+        .kpi-box.highlight .kpi-label,
+        .kpi-box.highlight .kpi-detail {
+            color: rgba(255, 255, 255, 0.7);
+        }
+
+        .kpi-box.highlight .kpi-value {
+            color: white;
+        }
+
+        .kpi-label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-bottom: 8px;
+            font-weight: 500;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .kpi-value {
+            font-size: 2.2rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            line-height: 1.2;
+        }
+
+        .kpi-value.success { color: var(--success); }
+        .kpi-value.warning { color: var(--warning); }
+        .kpi-value.danger { color: var(--danger); }
+
+        .kpi-detail {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-top: 8px;
+        }
+
+        /* 分析セクション */
+        .analysis-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .section-title {
+            font-size: 1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .section-title::before {
+            content: '';
+            display: inline-block;
+            width: 4px;
+            height: 18px;
+            background: var(--primary-blue);
+            border-radius: 2px;
+        }
+
+        .analysis-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .analysis-card {
+            background: var(--bg-light);
+            border-radius: 8px;
+            padding: 16px;
+        }
+
+        .analysis-card .card-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 8px;
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .analysis-card .card-content {
+            font-size: 0.85rem;
+            color: var(--text-light);
+            line-height: 1.5;
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 4px;
+            font-size: 0.7rem;
+            font-weight: 600;
+        }
+
+        .badge.success { background: #D1FAE5; color: #065F46; }
+        .badge.warning { background: #FEF3C7; color: #92400E; }
+        .badge.danger { background: #FEE2E2; color: #991B1B; }
+
+        /* フィルター */
+        .filter-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 30px;
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-bottom: 12px;
+        }
+
+        .filter-row:last-child {
+            margin-bottom: 0;
+        }
+
+        .filter-label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-weight: 500;
+            min-width: 60px;
+        }
+
+        .filter-btn {
+            padding: 6px 14px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .filter-btn:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .filter-btn.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
+        }
+
+        /* 担当者カード */
+        .member-section {
+            margin-bottom: 30px;
+        }
+
+        .member-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(380px, 1fr));
+            gap: 20px;
+        }
+
+        .member-card {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .member-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+        }
+
+        .member-name {
+            font-size: 1.1rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        .member-project {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            background: var(--bg-light);
+            padding: 4px 10px;
+            border-radius: 4px;
+        }
+
+        .progress-row {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .progress-label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            width: 50px;
+            font-weight: 500;
+        }
+
+        .progress-bar-container {
+            flex: 1;
+            margin: 0 15px;
+            position: relative;
+        }
+
+        .progress-bar {
+            height: 10px;
+            background: var(--bg-light);
+            border-radius: 5px;
+            overflow: visible;
+            position: relative;
+        }
+
+        .progress-bar .fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.5s ease;
+        }
+
+        .progress-bar .fill.success { background: var(--success); }
+        .progress-bar .fill.warning { background: var(--warning); }
+        .progress-bar .fill.danger { background: var(--danger); }
+
+        .progress-bar .target-line {
+            position: absolute;
+            top: -4px;
+            height: 18px;
+            width: 2px;
+            background: var(--dark-navy);
+            z-index: 10;
+        }
+
+        .progress-value {
+            font-size: 0.9rem;
+            font-weight: 600;
+            width: 55px;
+            text-align: right;
+        }
+
+        .progress-value.success { color: var(--success); }
+        .progress-value.warning { color: var(--warning); }
+        .progress-value.danger { color: var(--danger); }
+
+        .stats-row {
+            display: flex;
+            justify-content: space-between;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.7rem;
+            color: var(--text-light);
+            margin-bottom: 4px;
+        }
+
+        .stat-value {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-dark);
+        }
+
+        /* グラフ */
+        .charts-section {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .chart-card {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-card.full-width {
+            grid-column: span 2;
+        }
+
+        .chart-card h3 {
+            font-size: 0.95rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            margin-bottom: 20px;
+        }
+
+        .chart-container {
+            position: relative;
+            height: 300px;
+        }
+
+        /* エラー */
+        .error-message {
+            background: #FEE2E2;
+            border: 1px solid #FECACA;
+            border-radius: 8px;
+            padding: 16px;
+            color: #991B1B;
+            margin-bottom: 20px;
+            display: none;
+        }
+
+        /* フッター */
+        .footer {
+            text-align: center;
+            padding: 20px;
+            color: var(--text-light);
+            font-size: 0.8rem;
+        }
+
+        @media (max-width: 1024px) {
+            .kpi-summary {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .analysis-grid {
+                grid-template-columns: repeat(2, 1fr);
+            }
+            .charts-section {
+                grid-template-columns: 1fr;
+            }
+            .chart-card.full-width {
+                grid-column: span 1;
+            }
+        }
+
+        @media (max-width: 768px) {
+            .member-grid {
+                grid-template-columns: 1fr;
+            }
+            .top-header {
+                flex-direction: column;
+                gap: 15px;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="loading-overlay" id="loadingOverlay">
+        <div class="spinner"></div>
+        <div class="loading-text">データを読み込んでいます...</div>
+    </div>
+
+    <!-- ヘッダー -->
+    <header class="top-header">
+        <div class="logo">
+            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
+                <path d="M20 4C12 4 6 10 6 18C6 22 8 25.5 11 28C11 28 10 32 8 36C12 34 16 32 18 31C18.6 31 19.3 31 20 31C28 31 34 25 34 18C34 10 28 4 20 4Z" stroke="#5A6A7A" stroke-width="2.5" fill="none"/>
+                <circle cx="14" cy="17" r="2" fill="#5A6A7A"/>
+                <circle cx="20" cy="17" r="2" fill="#5A6A7A"/>
+                <path d="M12 22C12 22 15 25 20 25C25 25 28 22 28 22" stroke="#5A6A7A" stroke-width="2" stroke-linecap="round" fill="none"/>
+            </svg>
+            <span class="logo-text">DigiMan</span>
+        </div>
+        <div class="header-right">
+            <span class="last-updated" id="lastUpdated"></span>
+            <button class="refresh-btn" onclick="refreshData()" id="refreshBtn">
+                <svg width="16" height="16" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                    <path d="M23 4v6h-6M1 20v-6h6M3.51 9a9 9 0 0114.85-3.36L23 10M1 14l4.64 4.36A9 9 0 0020.49 15"/>
+                </svg>
+                更新
+            </button>
+        </div>
+    </header>
+
+    <div class="dashboard">
+        <div class="page-title">
+            <h1>稼働報酬チーム営業KPI確認シート<span class="progress-badge" id="progressBadge">標準進捗: --%</span></h1>
+            <p class="subtitle" id="dateInfo">月次ビュー</p>
+        </div>
+
+        <div class="error-message" id="errorMessage"></div>
+
+        <div id="mainContent" style="display: none;">
+            <div class="kpi-summary" id="kpiSummary"></div>
+            <div class="analysis-section" id="analysisSection"></div>
+            <div class="filter-section" id="filterSection"></div>
+
+            <div class="member-section">
+                <div class="section-title">担当者別 進捗状況</div>
+                <div class="member-grid" id="memberGrid"></div>
+            </div>
+
+            <div class="charts-section">
+                <div class="chart-card full-width">
+                    <h3>架電進捗 vs アポ進捗（標準進捗ライン付き）</h3>
+                    <div class="chart-container">
+                        <canvas id="progressCompareChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>架電進捗率ランキング</h3>
+                    <div class="chart-container">
+                        <canvas id="callRankChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>アポ進捗率ランキング</h3>
+                    <div class="chart-container">
+                        <canvas id="appoRankChart"></canvas>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="footer">
+            &copy; DigiMan Inc.
+        </div>
+    </div>
+
+    <script>
+        let charts = {};
+        let currentData = null;
+        let currentProjectFilter = 'all';
+        let currentMemberFilter = 'all';
+
+        const colors = {
+            primary: '#1A56DB',
+            darkNavy: '#0F2444',
+            success: '#10B981',
+            warning: '#F59E0B',
+            danger: '#EF4444',
+            call: '#1A56DB',
+            appo: '#7C3AED'
+        };
+
+        const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbz1ZDCczUFxuSL0mjHq_VTFotjst_vZssGJPIizQ3XALil5ekqq7-SJkjPcqBFyN2V28g/exec';
+
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!localStorage.getItem('gasApiUrl')) {
+                localStorage.setItem('gasApiUrl', DEFAULT_API_URL);
+            }
+            loadData();
+        });
+
+        async function loadData() {
+            const url = localStorage.getItem('gasApiUrl');
+            showLoading();
+            try {
+                const response = await fetch(url);
+                const data = await response.json();
+                if (data.error) throw new Error(data.error);
+                currentData = data;
+                renderDashboard(data);
+                document.getElementById('mainContent').style.display = 'block';
+                document.getElementById('lastUpdated').textContent = `最終更新: ${new Date().toLocaleString('ja-JP')}`;
+            } catch (error) {
+                document.getElementById('errorMessage').textContent = 'エラー: ' + error.message;
+                document.getElementById('errorMessage').style.display = 'block';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function refreshData() {
+            const btn = document.getElementById('refreshBtn');
+            btn.disabled = true;
+            loadData().finally(() => {
+                btn.disabled = false;
+            });
+        }
+
+        function renderDashboard(data) {
+            const { metadata, summary, members } = data;
+            const standardProgress = parseFloat(metadata.standardProgress);
+
+            document.getElementById('dateInfo').textContent =
+                `経過 ${metadata.elapsedDays}日 / 全${metadata.totalDays}稼働日`;
+            document.getElementById('progressBadge').textContent =
+                `標準進捗: ${standardProgress}%`;
+
+            renderKPISummary(summary, standardProgress);
+            renderAnalysis(members, summary, standardProgress);
+            renderFilters(members);
+            renderMemberCards(members, standardProgress);
+            renderCharts(members, standardProgress);
+        }
+
+        function renderKPISummary(summary, standardProgress) {
+            const callStatus = getStatus(summary.callProgressRate, standardProgress);
+            const appoStatus = getStatus(summary.appointmentProgressRate, standardProgress);
+            const diff = (summary.appointmentProgressRate - standardProgress).toFixed(1);
+
+            document.getElementById('kpiSummary').innerHTML = `
+                <div class="kpi-box highlight">
+                    <div class="kpi-label">標準進捗</div>
+                    <div class="kpi-value">${standardProgress}%</div>
+                    <div class="kpi-detail">経過日数ベース</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-label">架電進捗</div>
+                    <div class="kpi-value ${callStatus}">${summary.callProgressRate}%</div>
+                    <div class="kpi-detail">${summary.totalCalls.toLocaleString()} / ${summary.targetCalls.toLocaleString()}件</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-label">アポ進捗</div>
+                    <div class="kpi-value ${appoStatus}">${summary.appointmentProgressRate}%</div>
+                    <div class="kpi-detail">${summary.totalAppointments} / ${summary.targetAppointments}件</div>
+                </div>
+                <div class="kpi-box">
+                    <div class="kpi-label">進捗差分</div>
+                    <div class="kpi-value ${appoStatus}">${diff >= 0 ? '+' : ''}${diff}%</div>
+                    <div class="kpi-detail">アポ - 標準</div>
+                </div>
+            `;
+        }
+
+        function getDisplayName(member) {
+            return `${member.name}（${member.project}）`;
+        }
+
+        function renderAnalysis(members, summary, standardProgress) {
+            const aboveStandard = members.filter(m => m.appointmentProgress >= standardProgress);
+            const belowStandard = members.filter(m => m.appointmentProgress < standardProgress);
+            const topPerformer = [...members].sort((a, b) => b.appointmentProgress - a.appointmentProgress)[0];
+            const needsAttention = [...members].sort((a, b) => a.appointmentProgress - b.appointmentProgress)[0];
+
+            const overallBadge = summary.appointmentProgressRate >= standardProgress ? 'success' :
+                                 summary.appointmentProgressRate >= standardProgress * 0.8 ? 'warning' : 'danger';
+
+            document.getElementById('analysisSection').innerHTML = `
+                <div class="section-title">進捗サマリー</div>
+                <div class="analysis-grid">
+                    <div class="analysis-card">
+                        <div class="card-title">
+                            全体状況
+                            <span class="badge ${overallBadge}">${overallBadge === 'success' ? '順調' : overallBadge === 'warning' ? '要注意' : '遅延'}</span>
+                        </div>
+                        <div class="card-content">
+                            標準${standardProgress}%に対しアポ${summary.appointmentProgressRate}%
+                        </div>
+                    </div>
+                    <div class="analysis-card">
+                        <div class="card-title">達成状況</div>
+                        <div class="card-content">
+                            達成 <strong>${aboveStandard.length}名</strong> / 未達 <strong>${belowStandard.length}名</strong>
+                        </div>
+                    </div>
+                    <div class="analysis-card">
+                        <div class="card-title">
+                            トップ
+                            <span class="badge success">TOP</span>
+                        </div>
+                        <div class="card-content">
+                            ${getDisplayName(topPerformer)}：${topPerformer.appointmentProgress}%
+                        </div>
+                    </div>
+                    <div class="analysis-card">
+                        <div class="card-title">
+                            要フォロー
+                            <span class="badge danger">注意</span>
+                        </div>
+                        <div class="card-content">
+                            ${getDisplayName(needsAttention)}：${needsAttention.appointmentProgress}%
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function renderFilters(members) {
+            const projects = [...new Set(members.map(m => m.project))];
+            const names = [...new Set(members.map(m => m.name))];
+
+            const filterSection = document.getElementById('filterSection');
+            filterSection.innerHTML = `
+                <div class="filter-row" id="projectFilterRow">
+                    <span class="filter-label">案件</span>
+                    <button class="filter-btn active" data-type="project" data-value="all">全案件</button>
+                    ${projects.map((p, i) => `<button class="filter-btn" data-type="project" data-value="${i}">${p}</button>`).join('')}
+                </div>
+                <div class="filter-row" id="memberFilterRow">
+                    <span class="filter-label">担当者</span>
+                    <button class="filter-btn active" data-type="member" data-value="all">全員</button>
+                    ${names.map((n, i) => `<button class="filter-btn" data-type="member" data-value="${i}">${n}</button>`).join('')}
+                </div>
+            `;
+
+            // Store project and name arrays for lookup
+            window.projectList = projects;
+            window.nameList = names;
+
+            // Add click handlers
+            filterSection.querySelectorAll('.filter-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const type = this.dataset.type;
+                    const value = this.dataset.value;
+                    let filterValue = 'all';
+
+                    if (value !== 'all') {
+                        if (type === 'project') {
+                            filterValue = window.projectList[parseInt(value)];
+                        } else {
+                            filterValue = window.nameList[parseInt(value)];
+                        }
+                    }
+
+                    applyFilter(filterValue, type, this);
+                });
+            });
+        }
+
+        function applyFilter(filter, type, btn) {
+            document.querySelectorAll(`.filter-btn[data-type="${type}"]`).forEach(b => b.classList.remove('active'));
+            btn.classList.add('active');
+
+            if (type === 'project') currentProjectFilter = filter;
+            else currentMemberFilter = filter;
+
+            let filtered = currentData.members;
+            if (currentProjectFilter !== 'all') filtered = filtered.filter(m => m.project === currentProjectFilter);
+            if (currentMemberFilter !== 'all') filtered = filtered.filter(m => m.name === currentMemberFilter);
+
+            const standardProgress = parseFloat(currentData.metadata.standardProgress);
+            renderMemberCards(filtered, standardProgress);
+            renderCharts(filtered, standardProgress);
+        }
+
+        function renderMemberCards(members, standardProgress) {
+            if (!members || members.length === 0) {
+                document.getElementById('memberGrid').innerHTML = '<p style="color: var(--text-light); padding: 20px;">該当するデータがありません</p>';
+                return;
+            }
+
+            const sorted = [...members].sort((a, b) => b.appointmentProgress - a.appointmentProgress);
+
+            document.getElementById('memberGrid').innerHTML = sorted.map(m => {
+                const callStatus = getStatus(m.callProgress, standardProgress);
+                const appoStatus = getStatus(m.appointmentProgress, standardProgress);
+
+                return `
+                    <div class="member-card">
+                        <div class="member-header">
+                            <span class="member-name">${m.name}（${m.project}）</span>
+                        </div>
+                        <div class="progress-row">
+                            <span class="progress-label">架電</span>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar">
+                                    <div class="fill ${callStatus}" style="width: ${Math.min(m.callProgress, 100)}%;"></div>
+                                    <div class="target-line" style="left: ${standardProgress}%;"></div>
+                                </div>
+                            </div>
+                            <span class="progress-value ${callStatus}">${m.callProgress}%</span>
+                        </div>
+                        <div class="progress-row">
+                            <span class="progress-label">アポ</span>
+                            <div class="progress-bar-container">
+                                <div class="progress-bar">
+                                    <div class="fill ${appoStatus}" style="width: ${Math.min(m.appointmentProgress, 100)}%;"></div>
+                                    <div class="target-line" style="left: ${standardProgress}%;"></div>
+                                </div>
+                            </div>
+                            <span class="progress-value ${appoStatus}">${m.appointmentProgress}%</span>
+                        </div>
+                        <div class="stats-row">
+                            <div class="stat-item">
+                                <div class="stat-label">架電数</div>
+                                <div class="stat-value">${m.actualCalls}/${m.targetCalls}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">アポ数</div>
+                                <div class="stat-value">${m.actualAppointments}/${m.targetAppointments}</div>
+                            </div>
+                            <div class="stat-item">
+                                <div class="stat-label">架電→アポ</div>
+                                <div class="stat-value">${m.callToAppointmentActual}%</div>
+                            </div>
+                        </div>
+                    </div>
+                `;
+            }).join('');
+        }
+
+        function renderCharts(members, standardProgress) {
+            Object.values(charts).forEach(c => c.destroy());
+            charts = {};
+
+            // データがない場合は空のチャートを表示しない
+            if (!members || members.length === 0) {
+                return;
+            }
+
+            const labels = members.map(m => getDisplayName(m));
+
+            charts.compare = new Chart(document.getElementById('progressCompareChart'), {
+                type: 'bar',
+                data: {
+                    labels: labels,
+                    datasets: [
+                        {
+                            label: '架電進捗',
+                            data: members.map(m => m.callProgress),
+                            backgroundColor: colors.call,
+                            borderRadius: 4
+                        },
+                        {
+                            label: 'アポ進捗',
+                            data: members.map(m => m.appointmentProgress),
+                            backgroundColor: colors.appo,
+                            borderRadius: 4
+                        }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#6B7280' } },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: standardProgress,
+                                    yMax: standardProgress,
+                                    borderColor: colors.darkNavy,
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    label: {
+                                        display: true,
+                                        content: `標準 ${standardProgress}%`,
+                                        position: 'end',
+                                        color: '#fff',
+                                        backgroundColor: colors.darkNavy
+                                    }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
+                        x: { grid: { display: false }, ticks: { color: '#6B7280' } }
+                    }
+                }
+            });
+
+            const callSorted = [...members].sort((a, b) => b.callProgress - a.callProgress);
+            charts.callRank = new Chart(document.getElementById('callRankChart'), {
+                type: 'bar',
+                data: {
+                    labels: callSorted.map(m => getDisplayName(m)),
+                    datasets: [{
+                        data: callSorted.map(m => m.callProgress),
+                        backgroundColor: callSorted.map(m => getStatusColor(m.callProgress, standardProgress)),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
+                        y: { grid: { display: false }, ticks: { color: '#6B7280' } }
+                    }
+                }
+            });
+
+            const appoSorted = [...members].sort((a, b) => b.appointmentProgress - a.appointmentProgress);
+            charts.appoRank = new Chart(document.getElementById('appoRankChart'), {
+                type: 'bar',
+                data: {
+                    labels: appoSorted.map(m => getDisplayName(m)),
+                    datasets: [{
+                        data: appoSorted.map(m => m.appointmentProgress),
+                        backgroundColor: appoSorted.map(m => getStatusColor(m.appointmentProgress, standardProgress)),
+                        borderRadius: 4
+                    }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
+                        y: { grid: { display: false }, ticks: { color: '#6B7280' } }
+                    }
+                }
+            });
+        }
+
+        function getStatus(value, standard) {
+            if (value >= standard) return 'success';
+            if (value >= standard * 0.8) return 'warning';
+            return 'danger';
+        }
+
+        function getStatusColor(value, standard) {
+            if (value >= standard) return colors.success;
+            if (value >= standard * 0.8) return colors.warning;
+            return colors.danger;
+        }
+
+        function showLoading() {
+            document.getElementById('loadingOverlay').classList.remove('hidden');
+        }
+
+        function hideLoading() {
+            document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+    </script>
+</body>
+</html>

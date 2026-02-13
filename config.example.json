@@ -1,0 +1,16 @@
+{
+  "spreadsheet": {
+    "id": "1YjOXBP9cGnMmLpCCO-rRC2tVe25_LZbijaRldl2ZiSM",
+    "sheetName": "月次ビュー",
+    "url": "https://docs.google.com/spreadsheets/d/1YjOXBP9cGnMmLpCCO-rRC2tVe25_LZbijaRldl2ZiSM"
+  },
+  "api": {
+    "gasWebAppUrl": "https://script.google.com/macros/s/AKfycbz1ZDCczUFxuSL0mjHq_VTFotjst_vZssGJPIizQ3XALil5ekqq7-SJkjPcqBFyN2V28g/exec",
+    "method": "GET",
+    "responseType": "JSON"
+  },
+  "gasProject": {
+    "scriptId": "※Apps Scriptエディタで確認",
+    "projectUrl": "https://script.google.com/home/projects/※プロジェクトID"
+  }
+}
