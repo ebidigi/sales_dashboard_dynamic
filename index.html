@@ -344,6 +344,91 @@
             color: white;
         }
 
+        /* 選択中タグ */
+        .selected-tags {
+            display: flex;
+            flex-wrap: wrap;
+            gap: 8px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+            min-height: 36px;
+            align-items: center;
+        }
+
+        .selected-tags.empty {
+            display: none;
+        }
+
+        .tag {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            padding: 6px 12px;
+            background: var(--primary-blue);
+            color: white;
+            border-radius: 20px;
+            font-size: 0.8rem;
+            font-weight: 500;
+        }
+
+        .tag.project {
+            background: var(--dark-navy);
+        }
+
+        .tag.member {
+            background: #7C3AED;
+        }
+
+        .tag-remove {
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 16px;
+            height: 16px;
+            background: rgba(255, 255, 255, 0.3);
+            border-radius: 50%;
+            cursor: pointer;
+            font-size: 12px;
+            line-height: 1;
+        }
+
+        .tag-remove:hover {
+            background: rgba(255, 255, 255, 0.5);
+        }
+
+        .clear-all-btn {
+            padding: 6px 12px;
+            background: transparent;
+            border: 1px solid var(--border-color);
+            color: var(--text-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .clear-all-btn:hover {
+            border-color: var(--danger);
+            color: var(--danger);
+        }
+
+        .filter-group-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+            margin-bottom: 8px;
+        }
+
+        .filter-row {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            flex-wrap: wrap;
+            margin-bottom: 12px;
+        }
+
         /* 担当者カード */
         .member-section {
             margin-bottom: 30px;
@@ -586,6 +671,7 @@
                 <div class="member-grid" id="memberGrid"></div>
             </div>
 
+            <div class="section-title">案件別 進捗状況</div>
             <div class="charts-section">
                 <div class="chart-card full-width">
                     <h3>架電進捗 vs アポ進捗（標準進捗ライン付き）</h3>
@@ -593,14 +679,18 @@
                         <canvas id="progressCompareChart"></canvas>
                     </div>
                 </div>
+            </div>
+
+            <div class="section-title">案件別 進捗率ランキング</div>
+            <div class="charts-section">
                 <div class="chart-card">
-                    <h3>架電進捗率ランキング</h3>
+                    <h3>架電進捗率</h3>
                     <div class="chart-container">
                         <canvas id="callRankChart"></canvas>
                     </div>
                 </div>
                 <div class="chart-card">
-                    <h3>アポ進捗率ランキング</h3>
+                    <h3>アポ進捗率</h3>
                     <div class="chart-container">
                         <canvas id="appoRankChart"></canvas>
                     </div>
@@ -616,8 +706,8 @@
     <script>
         let charts = {};
         let currentData = null;
-        let currentProjectFilter = 'all';
-        let currentMemberFilter = 'all';
+        let selectedProjects = [];
+        let selectedMembers = [];
 
         const colors = {
             primary: '#1A56DB',
@@ -765,56 +855,160 @@
 
         function renderFilters(members) {
             const projects = [...new Set(members.map(m => m.project))];
-            const names = [...new Set(members.map(m => m.name))];
+            const allNames = [...new Set(members.map(m => m.name))];
 
+            // 案件→担当者のマッピング
+            const projectMemberMap = {};
+            members.forEach(m => {
+                if (!projectMemberMap[m.project]) {
+                    projectMemberMap[m.project] = new Set();
+                }
+                projectMemberMap[m.project].add(m.name);
+            });
+
+            // 担当者→案件のマッピング
+            const memberProjectMap = {};
+            members.forEach(m => {
+                if (!memberProjectMap[m.name]) {
+                    memberProjectMap[m.name] = new Set();
+                }
+                memberProjectMap[m.name].add(m.project);
+            });
+
+            window.projectList = projects;
+            window.allNameList = allNames;
+            window.projectMemberMap = projectMemberMap;
+            window.memberProjectMap = memberProjectMap;
+            window.allMembers = members;
+
+            updateFilterUI();
+        }
+
+        function updateFilterUI() {
             const filterSection = document.getElementById('filterSection');
+
+            // 双方向連動: どちらを先に選んでも対応
+            let availableProjects = new Set(window.projectList);
+            let availableMembers = new Set(window.allNameList);
+
+            // 担当者が選択されている場合、その担当者が属する案件のみ表示
+            if (selectedMembers.length > 0) {
+                availableProjects = new Set();
+                selectedMembers.forEach(m => {
+                    if (window.memberProjectMap[m]) {
+                        window.memberProjectMap[m].forEach(p => availableProjects.add(p));
+                    }
+                });
+            }
+
+            // 案件が選択されている場合、その案件の担当者のみ表示
+            if (selectedProjects.length > 0) {
+                availableMembers = new Set();
+                selectedProjects.forEach(p => {
+                    if (window.projectMemberMap[p]) {
+                        window.projectMemberMap[p].forEach(name => availableMembers.add(name));
+                    }
+                });
+            }
+
+            const availableProjectList = [...availableProjects];
+            const availableMemberList = [...availableMembers];
+
+            // 選択された項目が利用可能リストにない場合は除外
+            selectedProjects = selectedProjects.filter(p => availableProjects.has(p));
+            selectedMembers = selectedMembers.filter(m => availableMembers.has(m));
+
+            const hasSelection = selectedProjects.length > 0 || selectedMembers.length > 0;
+            const projectHint = selectedMembers.length > 0 ? '（選択担当者の案件のみ）' : '';
+            const memberHint = selectedProjects.length > 0 ? '（選択案件の担当者のみ）' : '';
+
             filterSection.innerHTML = `
+                <div class="filter-group-label">案件で絞り込み${projectHint}</div>
                 <div class="filter-row" id="projectFilterRow">
-                    <span class="filter-label">案件</span>
-                    <button class="filter-btn active" data-type="project" data-value="all">全案件</button>
-                    ${projects.map((p, i) => `<button class="filter-btn" data-type="project" data-value="${i}">${p}</button>`).join('')}
+                    ${availableProjectList.map(p => `
+                        <button class="filter-btn ${selectedProjects.includes(p) ? 'active' : ''}"
+                                data-type="project" data-value="${p}">${p}</button>
+                    `).join('')}
                 </div>
+
+                <div class="filter-group-label">担当者で絞り込み${memberHint}</div>
                 <div class="filter-row" id="memberFilterRow">
-                    <span class="filter-label">担当者</span>
-                    <button class="filter-btn active" data-type="member" data-value="all">全員</button>
-                    ${names.map((n, i) => `<button class="filter-btn" data-type="member" data-value="${i}">${n}</button>`).join('')}
+                    ${availableMemberList.map(n => `
+                        <button class="filter-btn ${selectedMembers.includes(n) ? 'active' : ''}"
+                                data-type="member" data-value="${n}">${n}</button>
+                    `).join('')}
+                </div>
+
+                <div class="selected-tags ${hasSelection ? '' : 'empty'}" id="selectedTags">
+                    ${selectedProjects.map(p => `
+                        <span class="tag project" data-type="project" data-value="${p}">
+                            ${p}
+                            <span class="tag-remove" onclick="removeTag('project', '${p}')">&times;</span>
+                        </span>
+                    `).join('')}
+                    ${selectedMembers.map(m => `
+                        <span class="tag member" data-type="member" data-value="${m}">
+                            ${m}
+                            <span class="tag-remove" onclick="removeTag('member', '${m}')">&times;</span>
+                        </span>
+                    `).join('')}
+                    ${hasSelection ? '<button class="clear-all-btn" onclick="clearAllFilters()">クリア</button>' : ''}
                 </div>
             `;
-
-            // Store project and name arrays for lookup
-            window.projectList = projects;
-            window.nameList = names;
 
             // Add click handlers
             filterSection.querySelectorAll('.filter-btn').forEach(btn => {
                 btn.addEventListener('click', function() {
                     const type = this.dataset.type;
                     const value = this.dataset.value;
-                    let filterValue = 'all';
-
-                    if (value !== 'all') {
-                        if (type === 'project') {
-                            filterValue = window.projectList[parseInt(value)];
-                        } else {
-                            filterValue = window.nameList[parseInt(value)];
-                        }
-                    }
-
-                    applyFilter(filterValue, type, this);
+                    toggleFilter(type, value);
                 });
             });
+
+            applyFilters();
         }
 
-        function applyFilter(filter, type, btn) {
-            document.querySelectorAll(`.filter-btn[data-type="${type}"]`).forEach(b => b.classList.remove('active'));
-            btn.classList.add('active');
+        function toggleFilter(type, value) {
+            if (type === 'project') {
+                if (selectedProjects.includes(value)) {
+                    selectedProjects = selectedProjects.filter(p => p !== value);
+                } else {
+                    selectedProjects.push(value);
+                }
+            } else {
+                if (selectedMembers.includes(value)) {
+                    selectedMembers = selectedMembers.filter(m => m !== value);
+                } else {
+                    selectedMembers.push(value);
+                }
+            }
+            updateFilterUI();
+        }
 
-            if (type === 'project') currentProjectFilter = filter;
-            else currentMemberFilter = filter;
+        function removeTag(type, value) {
+            if (type === 'project') {
+                selectedProjects = selectedProjects.filter(p => p !== value);
+            } else {
+                selectedMembers = selectedMembers.filter(m => m !== value);
+            }
+            updateFilterUI();
+        }
 
+        function clearAllFilters() {
+            selectedProjects = [];
+            selectedMembers = [];
+            updateFilterUI();
+        }
+
+        function applyFilters() {
             let filtered = currentData.members;
-            if (currentProjectFilter !== 'all') filtered = filtered.filter(m => m.project === currentProjectFilter);
-            if (currentMemberFilter !== 'all') filtered = filtered.filter(m => m.name === currentMemberFilter);
+
+            if (selectedProjects.length > 0) {
+                filtered = filtered.filter(m => selectedProjects.includes(m.project));
+            }
+            if (selectedMembers.length > 0) {
+                filtered = filtered.filter(m => selectedMembers.includes(m.name));
+            }
 
             const standardProgress = parseFloat(currentData.metadata.standardProgress);
             renderMemberCards(filtered, standardProgress);
@@ -886,25 +1080,33 @@
                 return;
             }
 
-            const labels = members.map(m => getDisplayName(m));
+            // 案件別に集約
+            const projectData = {};
+            members.forEach(m => {
+                if (!projectData[m.project]) {
+                    projectData[m.project] = { totalCalls: 0, targetCalls: 0, totalAppo: 0, targetAppo: 0 };
+                }
+                projectData[m.project].totalCalls += m.actualCalls;
+                projectData[m.project].targetCalls += m.targetCalls;
+                projectData[m.project].totalAppo += m.actualAppointments;
+                projectData[m.project].targetAppo += m.targetAppointments;
+            });
+
+            const projectLabels = Object.keys(projectData);
+            const projectCallProgress = projectLabels.map(p =>
+                projectData[p].targetCalls > 0 ? Math.round((projectData[p].totalCalls / projectData[p].targetCalls) * 1000) / 10 : 0
+            );
+            const projectAppoProgress = projectLabels.map(p =>
+                projectData[p].targetAppo > 0 ? Math.round((projectData[p].totalAppo / projectData[p].targetAppo) * 1000) / 10 : 0
+            );
 
             charts.compare = new Chart(document.getElementById('progressCompareChart'), {
                 type: 'bar',
                 data: {
-                    labels: labels,
+                    labels: projectLabels,
                     datasets: [
-                        {
-                            label: '架電進捗',
-                            data: members.map(m => m.callProgress),
-                            backgroundColor: colors.call,
-                            borderRadius: 4
-                        },
-                        {
-                            label: 'アポ進捗',
-                            data: members.map(m => m.appointmentProgress),
-                            backgroundColor: colors.appo,
-                            borderRadius: 4
-                        }
+                        { label: '架電進捗', data: projectCallProgress, backgroundColor: colors.call, borderRadius: 4 },
+                        { label: 'アポ進捗', data: projectAppoProgress, backgroundColor: colors.appo, borderRadius: 4 }
                     ]
                 },
                 options: {
@@ -921,13 +1123,7 @@
                                     borderColor: colors.darkNavy,
                                     borderWidth: 2,
                                     borderDash: [5, 5],
-                                    label: {
-                                        display: true,
-                                        content: `標準 ${standardProgress}%`,
-                                        position: 'end',
-                                        color: '#fff',
-                                        backgroundColor: colors.darkNavy
-                                    }
+                                    label: { display: true, content: `標準 ${standardProgress}%`, position: 'end', color: '#fff', backgroundColor: colors.darkNavy }
                                 }
                             }
                         }
@@ -939,16 +1135,15 @@
                 }
             });
 
-            const callSorted = [...members].sort((a, b) => b.callProgress - a.callProgress);
+            // 案件別ランキングデータ
+            const callRankData = projectLabels.map((p, i) => ({ name: p, progress: projectCallProgress[i] })).sort((a, b) => b.progress - a.progress);
+            const appoRankData = projectLabels.map((p, i) => ({ name: p, progress: projectAppoProgress[i] })).sort((a, b) => b.progress - a.progress);
+
             charts.callRank = new Chart(document.getElementById('callRankChart'), {
                 type: 'bar',
                 data: {
-                    labels: callSorted.map(m => getDisplayName(m)),
-                    datasets: [{
-                        data: callSorted.map(m => m.callProgress),
-                        backgroundColor: callSorted.map(m => getStatusColor(m.callProgress, standardProgress)),
-                        borderRadius: 4
-                    }]
+                    labels: callRankData.map(d => d.name),
+                    datasets: [{ data: callRankData.map(d => d.progress), backgroundColor: callRankData.map(d => getStatusColor(d.progress, standardProgress)), borderRadius: 4 }]
                 },
                 options: {
                     indexAxis: 'y',
@@ -962,16 +1157,11 @@
                 }
             });
 
-            const appoSorted = [...members].sort((a, b) => b.appointmentProgress - a.appointmentProgress);
             charts.appoRank = new Chart(document.getElementById('appoRankChart'), {
                 type: 'bar',
                 data: {
-                    labels: appoSorted.map(m => getDisplayName(m)),
-                    datasets: [{
-                        data: appoSorted.map(m => m.appointmentProgress),
-                        backgroundColor: appoSorted.map(m => getStatusColor(m.appointmentProgress, standardProgress)),
-                        borderRadius: 4
-                    }]
+                    labels: appoRankData.map(d => d.name),
+                    datasets: [{ data: appoRankData.map(d => d.progress), backgroundColor: appoRankData.map(d => getStatusColor(d.progress, standardProgress)), borderRadius: 4 }]
                 },
                 options: {
                     indexAxis: 'y',
