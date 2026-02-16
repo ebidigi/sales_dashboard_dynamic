@@ -1824,10 +1824,56 @@
         // 分析ページ
         // ========================================
 
-        async function loadAnalysisData() {
+        const ANALYSIS_CACHE_KEY = 'analysisDataCache';
+        const CACHE_EXPIRY_MS = 5 * 60 * 1000; // 5分間キャッシュ有効
+
+        function getCacheKey(startDate, endDate) {
+            return `${startDate || 'all'}_${endDate || 'all'}`;
+        }
+
+        function getAnalysisCache(cacheKey) {
+            try {
+                const cacheStr = localStorage.getItem(ANALYSIS_CACHE_KEY);
+                if (!cacheStr) return null;
+                const cache = JSON.parse(cacheStr);
+                if (cache.key === cacheKey && Date.now() - cache.timestamp < CACHE_EXPIRY_MS) {
+                    return cache.data;
+                }
+            } catch (e) {
+                console.error('Cache read error:', e);
+            }
+            return null;
+        }
+
+        function setAnalysisCache(cacheKey, data) {
+            try {
+                const cache = {
+                    key: cacheKey,
+                    timestamp: Date.now(),
+                    data: data
+                };
+                localStorage.setItem(ANALYSIS_CACHE_KEY, JSON.stringify(cache));
+            } catch (e) {
+                console.error('Cache write error:', e);
+            }
+        }
+
+        async function loadAnalysisData(forceRefresh = false) {
             const url = localStorage.getItem('gasApiUrl');
             const startDate = document.getElementById('analysisStartDate').value;
             const endDate = document.getElementById('analysisEndDate').value;
+            const cacheKey = getCacheKey(startDate, endDate);
+
+            // キャッシュがあれば即座に表示
+            const cachedData = getAnalysisCache(cacheKey);
+            if (cachedData && !forceRefresh) {
+                analysisData = cachedData;
+                renderAnalysisPage();
+                console.log('Analysis data loaded from cache');
+                // バックグラウンドで最新データを取得
+                fetchAnalysisDataInBackground(url, startDate, endDate, cacheKey);
+                return;
+            }
 
             let apiUrl = `${url}?type=rawdata`;
             if (startDate) apiUrl += `&startDate=${startDate}`;
@@ -1837,14 +1883,34 @@
             try {
                 const response = await fetch(apiUrl);
                 analysisData = await response.json();
-                console.log('Analysis data loaded:', analysisData);
+                console.log('Analysis data loaded from API');
                 if (analysisData.error) throw new Error(analysisData.error);
+                setAnalysisCache(cacheKey, analysisData);
                 renderAnalysisPage();
             } catch (error) {
                 console.error('Analysis data load error:', error);
                 document.getElementById('analysisNumberKPIs').innerHTML = '<p style="color: var(--text-light);">データの読み込みに失敗しました</p>';
             } finally {
                 hideLoading();
+            }
+        }
+
+        async function fetchAnalysisDataInBackground(url, startDate, endDate, cacheKey) {
+            let apiUrl = `${url}?type=rawdata`;
+            if (startDate) apiUrl += `&startDate=${startDate}`;
+            if (endDate) apiUrl += `&endDate=${endDate}`;
+
+            try {
+                const response = await fetch(apiUrl);
+                const newData = await response.json();
+                if (!newData.error) {
+                    analysisData = newData;
+                    setAnalysisCache(cacheKey, newData);
+                    renderAnalysisPage();
+                    console.log('Analysis data updated from background fetch');
+                }
+            } catch (error) {
+                console.error('Background fetch error:', error);
             }
         }
 
@@ -1987,7 +2053,8 @@
         }
 
         function applyAnalysisFilters() {
-            loadAnalysisData();
+            // 日付フィルター変更時は強制リフレッシュ
+            loadAnalysisData(true);
         }
 
         function getFilteredAnalysisData() {
