@@ -261,14 +261,79 @@ function getRawData(params) {
   const allRecords = getAllRawRecords();
   const comparisons = calculateComparisons(aggregated, allRecords, startDate, endDate);
 
+  // 前月の日別データを取得（月次比較用）
+  const previousMonthDaily = getPreviousMonthDaily(allRecords, startDate, endDate);
+
   return {
     records: records,
     aggregated: aggregated,
     comparisons: comparisons,
+    previousMonthDaily: previousMonthDaily,
     filters: {
       projects: Array.from(projectSet).sort(),
       members: Array.from(memberSet).sort()
     }
+  };
+}
+
+// 前月の日別データを取得
+function getPreviousMonthDaily(allRecords, startDate, endDate) {
+  // 当月の範囲を決定
+  let currentStart, currentEnd;
+
+  if (startDate && endDate) {
+    currentStart = new Date(startDate);
+    currentEnd = new Date(endDate);
+  } else {
+    // デフォルトは今月
+    const now = new Date();
+    currentStart = new Date(now.getFullYear(), now.getMonth(), 1);
+    currentEnd = new Date(now.getFullYear(), now.getMonth() + 1, 0);
+  }
+
+  // 前月の範囲を計算
+  const prevStart = new Date(currentStart.getFullYear(), currentStart.getMonth() - 1, 1);
+  const prevEnd = new Date(currentStart.getFullYear(), currentStart.getMonth(), 0);
+
+  // 前月のレコードをフィルタ
+  const prevRecords = allRecords.filter(r => {
+    if (!r.date) return false;
+    return r.date >= prevStart && r.date <= prevEnd;
+  });
+
+  // 日別集計
+  const dailyMap = {};
+  prevRecords.forEach(r => {
+    const day = r.date.getDate(); // 日のみ（1-31）
+    if (!dailyMap[day]) {
+      dailyMap[day] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+    }
+    dailyMap[day].calls += r.calls;
+    dailyMap[day].pr += r.pr;
+    dailyMap[day].appo += r.appo;
+    dailyMap[day].callTime += r.callTime;
+  });
+
+  // 1日〜31日の配列に変換
+  const result = [];
+  for (let day = 1; day <= 31; day++) {
+    const d = dailyMap[day] || { calls: 0, pr: 0, appo: 0, callTime: 0 };
+    result.push({
+      day: day,
+      calls: d.calls,
+      pr: d.pr,
+      appo: d.appo,
+      callTime: d.callTime,
+      callToPR: d.calls > 0 ? Math.round(d.pr / d.calls * 10000) / 100 : 0,
+      prToAppo: d.pr > 0 ? Math.round(d.appo / d.pr * 10000) / 100 : 0,
+      callToAppo: d.calls > 0 ? Math.round(d.appo / d.calls * 10000) / 100 : 0,
+      callsPerHour: d.callTime > 0 ? Math.round(d.calls / d.callTime * 10) / 10 : 0
+    });
+  }
+
+  return {
+    month: Utilities.formatDate(prevStart, 'Asia/Tokyo', 'yyyy-MM'),
+    daily: result
   };
 }
 

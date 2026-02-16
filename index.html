@@ -674,7 +674,12 @@
             padding: 16px 8px;
             transition: width 0.2s ease, padding 0.2s ease;
             flex-shrink: 0;
-            position: relative;
+            position: fixed;
+            top: 70px;
+            left: 0;
+            height: calc(100vh - 70px);
+            z-index: 50;
+            overflow-y: auto;
         }
 
         .sidebar.collapsed {
@@ -803,6 +808,8 @@
         .main-content {
             flex: 1;
             overflow-x: hidden;
+            margin-left: 220px;
+            transition: margin-left 0.2s ease;
         }
 
         /* 旧タブナビゲーション（非表示） */
@@ -969,6 +976,32 @@
             color: white;
         }
 
+        .chart-compare-toggle {
+            display: flex;
+            align-items: center;
+            margin-bottom: 16px;
+        }
+
+        .compare-toggle-label {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .compare-toggle-label input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            accent-color: var(--primary-blue);
+            cursor: pointer;
+        }
+
+        .compare-toggle-text {
+            font-size: 0.85rem;
+            color: var(--text-dark);
+        }
+
         /* 設定ページ */
         .settings-section {
             background: var(--bg-white);
@@ -1106,12 +1139,7 @@
     <!-- ヘッダー -->
     <header class="top-header">
         <div class="logo">
-            <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 4C12 4 6 10 6 18C6 22 8 25.5 11 28C11 28 10 32 8 36C12 34 16 32 18 31C18.6 31 19.3 31 20 31C28 31 34 25 34 18C34 10 28 4 20 4Z" stroke="#1155cc" stroke-width="2.5" fill="none"/>
-                <circle cx="14" cy="17" r="2" fill="#1155cc"/>
-                <circle cx="20" cy="17" r="2" fill="#1155cc"/>
-                <path d="M12 22C12 22 15 25 20 25C25 25 28 22 28 22" stroke="#1155cc" stroke-width="2" stroke-linecap="round" fill="none"/>
-            </svg>
+            <img src="logo.png" alt="Logo" style="height: 32px; width: auto;">
             <span class="logo-text">DigiMan</span>
         </div>
         <div class="header-right">
@@ -1134,10 +1162,6 @@
                     <path d="M15 18l-6-6 6-6"/>
                 </svg>
             </button>
-            <div class="sidebar-logo">
-                <img src="logo.png" alt="Logo">
-                <span class="sidebar-logo-text">Sales KPI</span>
-            </div>
             <nav class="sidebar-nav">
                 <button class="sidebar-item active" data-tab="overview" onclick="switchTab('overview')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1256,6 +1280,12 @@
                     <button class="chart-type-btn" data-chart="callToAppo">架電toアポ率</button>
                     <button class="chart-type-btn" data-chart="callsPerHour">架電数/H</button>
                 </div>
+                <div class="chart-compare-toggle">
+                    <label class="compare-toggle-label">
+                        <input type="checkbox" id="compareMonthToggle" onchange="toggleMonthCompare()">
+                        <span class="compare-toggle-text">前月と比較</span>
+                    </label>
+                </div>
                 <div class="chart-container">
                     <canvas id="analysisDailyChart"></canvas>
                 </div>
@@ -1305,6 +1335,7 @@
         let analysisChart = null;
         let settingsData = null;
         let currentChartType = 'calls';
+        let compareMonthEnabled = false;
 
         const colors = {
             // メインカラー
@@ -1848,14 +1879,17 @@
 
         function toggleSidebar() {
             const sidebar = document.getElementById('sidebar');
+            const mainContent = document.querySelector('.main-content');
             const toggleIcon = document.getElementById('toggleIcon');
             sidebar.classList.toggle('collapsed');
 
-            // アイコンの向きを変更
+            // メインコンテンツのマージンを調整
             if (sidebar.classList.contains('collapsed')) {
                 toggleIcon.innerHTML = '<path d="M9 18l6-6-6-6"/>';
+                mainContent.style.marginLeft = '50px';
             } else {
                 toggleIcon.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+                mainContent.style.marginLeft = '220px';
             }
         }
 
@@ -2253,6 +2287,11 @@
             });
         }
 
+        function toggleMonthCompare() {
+            compareMonthEnabled = document.getElementById('compareMonthToggle').checked;
+            renderAnalysisChart();
+        }
+
         function renderAnalysisChart() {
             const { aggregated } = getFilteredAnalysisData();
             if (!aggregated || !aggregated.daily || aggregated.daily.length === 0) {
@@ -2264,45 +2303,44 @@
             }
 
             const daily = aggregated.daily;
-            const labels = daily.map(d => d.date);
 
-            let data, label, color;
-            switch (currentChartType) {
-                case 'calls':
-                    data = daily.map(d => d.calls);
-                    label = '架電数';
-                    color = colors.call;
-                    break;
-                case 'pr':
-                    data = daily.map(d => d.pr);
-                    label = 'PR数';
-                    color = colors.primaryCyan;
-                    break;
-                case 'appo':
-                    data = daily.map(d => d.appo);
-                    label = 'アポ数';
-                    color = colors.success;
-                    break;
-                case 'callToPR':
-                    data = daily.map(d => d.callToPR);
-                    label = '架電toPR率 (%)';
-                    color = colors.warning;
-                    break;
-                case 'prToAppo':
-                    data = daily.map(d => d.prToAppo);
-                    label = 'PRtoアポ率 (%)';
-                    color = '#00a2da';
-                    break;
-                case 'callToAppo':
-                    data = daily.map(d => d.callToAppo);
-                    label = '架電toアポ率 (%)';
-                    color = '#e04f24';
-                    break;
-                case 'callsPerHour':
-                    data = daily.map(d => d.callsPerHour);
-                    label = '架電数/H';
-                    color = colors.danger;
-                    break;
+            // 比較モードの場合は日付を日番号(1-31)に変換
+            let labels;
+            if (compareMonthEnabled) {
+                // 日番号でラベル作成（1日, 2日, ...）
+                labels = daily.map(d => {
+                    const day = new Date(d.date).getDate();
+                    return day + '日';
+                });
+            } else {
+                labels = daily.map(d => d.date);
+            }
+
+            let data, label, color, prevData;
+            const chartConfig = {
+                calls: { label: '架電数', color: colors.call, field: 'calls' },
+                pr: { label: 'PR数', color: colors.primaryCyan, field: 'pr' },
+                appo: { label: 'アポ数', color: colors.success, field: 'appo' },
+                callToPR: { label: '架電toPR率 (%)', color: colors.warning, field: 'callToPR' },
+                prToAppo: { label: 'PRtoアポ率 (%)', color: '#00a2da', field: 'prToAppo' },
+                callToAppo: { label: '架電toアポ率 (%)', color: '#e04f24', field: 'callToAppo' },
+                callsPerHour: { label: '架電数/H', color: colors.danger, field: 'callsPerHour' }
+            };
+
+            const config = chartConfig[currentChartType] || chartConfig.calls;
+            label = config.label;
+            color = config.color;
+            data = daily.map(d => d[config.field]);
+
+            // 前月データの取得（比較モード時）
+            if (compareMonthEnabled && analysisData && analysisData.previousMonthDaily) {
+                const prevDaily = analysisData.previousMonthDaily.daily;
+                // 当月の日付に対応する前月のデータを取得
+                prevData = daily.map(d => {
+                    const day = new Date(d.date).getDate();
+                    const prevDay = prevDaily.find(p => p.day === day);
+                    return prevDay ? prevDay[config.field] : null;
+                });
             }
 
             if (analysisChart) {
@@ -2310,20 +2348,38 @@
             }
 
             const ctx = document.getElementById('analysisDailyChart').getContext('2d');
+            const datasets = [{
+                label: compareMonthEnabled ? '当月 ' + label : label,
+                data: data,
+                borderColor: color,
+                backgroundColor: color + '20',
+                fill: !compareMonthEnabled,
+                tension: 0.3,
+                pointRadius: 4,
+                pointBackgroundColor: color
+            }];
+
+            // 比較モード時に前月データを追加
+            if (compareMonthEnabled && prevData) {
+                const prevMonth = analysisData.previousMonthDaily ? analysisData.previousMonthDaily.month : '前月';
+                datasets.push({
+                    label: '前月 ' + label,
+                    data: prevData,
+                    borderColor: '#b1b4ba',
+                    backgroundColor: '#b1b4ba20',
+                    fill: false,
+                    tension: 0.3,
+                    pointRadius: 4,
+                    pointBackgroundColor: '#b1b4ba',
+                    borderDash: [5, 5]
+                });
+            }
+
             analysisChart = new Chart(ctx, {
                 type: 'line',
                 data: {
                     labels: labels,
-                    datasets: [{
-                        label: label,
-                        data: data,
-                        borderColor: color,
-                        backgroundColor: color + '20',
-                        fill: true,
-                        tension: 0.3,
-                        pointRadius: 4,
-                        pointBackgroundColor: color
-                    }]
+                    datasets: datasets
                 },
                 options: {
                     responsive: true,
@@ -2355,13 +2411,70 @@
         // 設定ページ
         // ========================================
 
-        async function loadSettingsData() {
+        const SETTINGS_CACHE_KEY = 'settingsDataCache';
+
+        function getSettingsCache() {
+            try {
+                const cacheStr = localStorage.getItem(SETTINGS_CACHE_KEY);
+                if (!cacheStr) return null;
+                const cache = JSON.parse(cacheStr);
+                if (Date.now() - cache.timestamp < CACHE_EXPIRY_MS) {
+                    return cache.data;
+                }
+            } catch (e) {
+                console.error('Settings cache read error:', e);
+            }
+            return null;
+        }
+
+        function setSettingsCache(data) {
+            try {
+                const cache = {
+                    timestamp: Date.now(),
+                    data: data
+                };
+                localStorage.setItem(SETTINGS_CACHE_KEY, JSON.stringify(cache));
+            } catch (e) {
+                console.error('Settings cache write error:', e);
+            }
+        }
+
+        async function fetchSettingsDataInBackground(url) {
+            try {
+                const response = await fetch(`${url}?type=settings`);
+                const newData = await response.json();
+                if (!newData.error) {
+                    setSettingsCache(newData);
+                    // データが変わっていたら更新
+                    if (JSON.stringify(newData) !== JSON.stringify(settingsData)) {
+                        settingsData = newData;
+                        renderSettingsPage();
+                    }
+                }
+            } catch (e) {
+                console.error('Background settings fetch error:', e);
+            }
+        }
+
+        async function loadSettingsData(forceRefresh = false) {
             const url = localStorage.getItem('gasApiUrl');
+
+            // キャッシュチェック
+            const cachedData = getSettingsCache();
+            if (cachedData && !forceRefresh) {
+                settingsData = cachedData;
+                renderSettingsPage();
+                // バックグラウンドで最新データを取得
+                fetchSettingsDataInBackground(url);
+                return;
+            }
+
             showLoading();
             try {
                 const response = await fetch(`${url}?type=settings`);
                 settingsData = await response.json();
                 if (settingsData.error) throw new Error(settingsData.error);
+                setSettingsCache(settingsData);
                 renderSettingsPage();
             } catch (error) {
                 console.error('Settings data load error:', error);
@@ -2453,6 +2566,8 @@
                 if (result.success) {
                     message.textContent = '設定を保存しました';
                     message.className = 'settings-message success';
+                    // キャッシュをクリアして最新データを反映
+                    localStorage.removeItem(SETTINGS_CACHE_KEY);
                 } else {
                     throw new Error(result.error || '保存に失敗しました');
                 }
