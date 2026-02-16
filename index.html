@@ -4,6 +4,9 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>稼働報酬チーム営業KPI確認シート | DigiMan</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Noto+Sans+JP:wght@400;500;600;700&family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
     <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/chartjs-plugin-annotation"></script>
     <style>
@@ -14,25 +17,78 @@
         }
 
         :root {
-            --primary-blue: #1A56DB;
-            --dark-navy: #0F2444;
-            --logo-gray: #5A6A7A;
-            --text-dark: #1E3A5F;
-            --text-light: #6B7280;
+            /* メインカラー */
+            --primary-blue: #1155cc;
+            --primary-cyan: #00a2da;
+            --primary-yellow: #e8d335;
+            --primary-red: #e04f24;
+
+            /* ブルー系グラデーション */
+            --blue-50: #e7eefb;
+            --blue-100: #c2d6f9;
+            --blue-200: #86aaec;
+            --blue-300: #437ce1;
+            --blue-400: #1155cc;
+            --blue-500: #0c3d93;
+            --blue-600: #082558;
+
+            /* シアン系グラデーション */
+            --cyan-50: #eff8fa;
+            --cyan-100: #a1d7ea;
+            --cyan-200: #6dc6e5;
+            --cyan-300: #00a2da;
+            --cyan-400: #0083b0;
+
+            /* イエロー系グラデーション */
+            --yellow-50: #fbf8e2;
+            --yellow-100: #f4edb6;
+            --yellow-200: #ede07d;
+            --yellow-300: #e8d335;
+            --yellow-400: #dbc522;
+
+            /* レッド系グラデーション */
+            --red-50: #ffeae4;
+            --red-100: #fecec0;
+            --red-200: #ef947a;
+            --red-300: #ec724e;
+            --red-400: #e04f24;
+
+            /* グレー系 */
+            --gray-50: #fafaff;
+            --gray-100: #f9f9fc;
+            --gray-200: #e4e8ef;
+            --gray-300: #d0d4dc;
+            --gray-400: #b1b4ba;
+            --gray-500: #787b7f;
+            --gray-600: #434547;
+
+            /* セマンティックカラー */
+            --dark-navy: #082558;
+            --logo-gray: #787b7f;
+            --text-dark: #434547;
+            --text-light: #787b7f;
+            --text-muted: #688dce;
             --bg-white: #FFFFFF;
-            --bg-light: #F8FAFC;
-            --border-color: #E5E7EB;
-            --success: #10B981;
-            --warning: #F59E0B;
-            --danger: #EF4444;
+            --bg-light: #f9f9fc;
+            --border-color: #e4e8ef;
+
+            /* ステータスカラー（淡い色） */
+            --success: #86aaec;
+            --success-light: #c2d6f9;
+            --warning: #ede07d;
+            --warning-light: #f4edb6;
+            --danger: #ef947a;
+            --danger-light: #fecec0;
         }
 
         body {
-            font-family: 'Segoe UI', 'Hiragino Sans', 'Meiryo', sans-serif;
+            font-family: 'Noto Sans JP', 'Poppins', sans-serif;
             background: var(--bg-light);
             min-height: 100vh;
             color: var(--text-dark);
             padding: 0;
+            font-size: 14px;
+            line-height: 1.6;
         }
 
         /* ヘッダー */
@@ -60,9 +116,10 @@
         }
 
         .logo-text {
+            font-family: 'Poppins', sans-serif;
             font-size: 1.4rem;
             font-weight: 600;
-            color: var(--logo-gray);
+            color: var(--primary-blue);
         }
 
         .header-right {
@@ -129,6 +186,7 @@
             color: white;
             padding: 4px 12px;
             border-radius: 20px;
+            font-family: 'Poppins', sans-serif;
             font-size: 0.85rem;
             font-weight: 500;
             margin-left: 15px;
@@ -211,15 +269,16 @@
         }
 
         .kpi-value {
+            font-family: 'Poppins', sans-serif;
             font-size: 2.2rem;
             font-weight: 700;
             color: var(--text-dark);
             line-height: 1.2;
         }
 
-        .kpi-value.success { color: var(--success); }
-        .kpi-value.warning { color: var(--warning); }
-        .kpi-value.danger { color: var(--danger); }
+        .kpi-value.success { color: var(--blue-400); }
+        .kpi-value.warning { color: var(--yellow-400); }
+        .kpi-value.danger { color: var(--red-400); }
 
         .kpi-detail {
             font-size: 0.8rem;
@@ -291,9 +350,9 @@
             font-weight: 600;
         }
 
-        .badge.success { background: #D1FAE5; color: #065F46; }
-        .badge.warning { background: #FEF3C7; color: #92400E; }
-        .badge.danger { background: #FEE2E2; color: #991B1B; }
+        .badge.success { background: var(--blue-50); color: var(--blue-500); }
+        .badge.warning { background: var(--yellow-50); color: var(--yellow-400); }
+        .badge.danger { background: var(--red-50); color: var(--red-400); }
 
         /* フィルター */
         .filter-section {
@@ -373,11 +432,11 @@
         }
 
         .tag.project {
-            background: var(--dark-navy);
+            background: var(--blue-400);
         }
 
         .tag.member {
-            background: #7C3AED;
+            background: var(--cyan-300);
         }
 
         .tag-remove {
@@ -501,9 +560,9 @@
             transition: width 0.5s ease;
         }
 
-        .progress-bar .fill.success { background: var(--success); }
-        .progress-bar .fill.warning { background: var(--warning); }
-        .progress-bar .fill.danger { background: var(--danger); }
+        .progress-bar .fill.success { background: var(--blue-200); }
+        .progress-bar .fill.warning { background: var(--yellow-200); }
+        .progress-bar .fill.danger { background: var(--red-200); }
 
         .progress-bar .target-line {
             position: absolute;
@@ -515,15 +574,16 @@
         }
 
         .progress-value {
+            font-family: 'Poppins', sans-serif;
             font-size: 0.9rem;
             font-weight: 600;
             width: 55px;
             text-align: right;
         }
 
-        .progress-value.success { color: var(--success); }
-        .progress-value.warning { color: var(--warning); }
-        .progress-value.danger { color: var(--danger); }
+        .progress-value.success { color: var(--blue-400); }
+        .progress-value.warning { color: var(--yellow-400); }
+        .progress-value.danger { color: var(--red-400); }
 
         .stats-row {
             display: flex;
@@ -544,6 +604,7 @@
         }
 
         .stat-value {
+            font-family: 'Poppins', sans-serif;
             font-size: 0.95rem;
             font-weight: 600;
             color: var(--text-dark);
@@ -599,6 +660,382 @@
             font-size: 0.8rem;
         }
 
+        /* タブナビゲーション */
+        /* サイドバー */
+        .app-container {
+            display: flex;
+            min-height: calc(100vh - 70px);
+        }
+
+        .sidebar {
+            width: 220px;
+            background: var(--bg-white);
+            border-right: 1px solid var(--border-color);
+            padding: 16px 8px;
+            transition: width 0.2s ease, padding 0.2s ease;
+            flex-shrink: 0;
+            position: relative;
+        }
+
+        .sidebar.collapsed {
+            width: 50px;
+            padding: 16px 6px;
+        }
+
+        .sidebar-toggle {
+            position: absolute;
+            top: 16px;
+            right: -12px;
+            width: 24px;
+            height: 24px;
+            background: var(--bg-white);
+            border: 1px solid var(--border-color);
+            border-radius: 50%;
+            cursor: pointer;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 12px;
+            color: var(--text-light);
+            transition: all 0.2s;
+            z-index: 10;
+        }
+
+        .sidebar-toggle:hover {
+            background: var(--bg-light);
+            color: var(--text-dark);
+        }
+
+        .sidebar.collapsed .sidebar-toggle {
+            right: -12px;
+        }
+
+        .sidebar-nav {
+            display: flex;
+            flex-direction: column;
+            gap: 4px;
+            margin-top: 8px;
+        }
+
+        .sidebar-item {
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            padding: 10px 12px;
+            border: none;
+            background: transparent;
+            color: var(--text-light);
+            font-size: 0.9rem;
+            font-weight: 500;
+            border-radius: 6px;
+            cursor: pointer;
+            transition: all 0.15s;
+            text-align: left;
+            white-space: nowrap;
+        }
+
+        .sidebar-item:hover {
+            background: var(--gray-200);
+            color: var(--text-dark);
+        }
+
+        .sidebar-item.active {
+            background: var(--blue-50);
+            color: var(--primary-blue);
+        }
+
+        .sidebar-item svg {
+            width: 18px;
+            height: 18px;
+            flex-shrink: 0;
+        }
+
+        .sidebar-item-text {
+            overflow: hidden;
+            transition: opacity 0.2s;
+        }
+
+        .sidebar.collapsed .sidebar-item-text {
+            opacity: 0;
+            width: 0;
+        }
+
+        .sidebar.collapsed .sidebar-item {
+            justify-content: center;
+            padding: 10px;
+        }
+
+        .main-content {
+            flex: 1;
+            overflow-x: hidden;
+        }
+
+        /* 旧タブナビゲーション（非表示） */
+        .tab-navigation {
+            display: none;
+        }
+
+        .tab-btn {
+            display: none;
+        }
+
+        /* 分析ページ */
+        .analysis-filter-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .filter-date-row {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            margin-top: 16px;
+            padding-top: 16px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .filter-date-row label {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            font-weight: 500;
+        }
+
+        .filter-date-row input[type="date"] {
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-family: 'Poppins', sans-serif;
+        }
+
+        .filter-date-row input[type="date"]:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+
+        /* 分析KPIカード */
+        .analysis-kpi-section {
+            margin-bottom: 24px;
+        }
+
+        .analysis-kpi-title {
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-light);
+            margin-bottom: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .analysis-kpi-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 16px;
+        }
+
+        .analysis-kpi-card {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .analysis-kpi-card .kpi-name {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            font-weight: 500;
+            margin-bottom: 8px;
+        }
+
+        .analysis-kpi-card .kpi-main-value {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.8rem;
+            font-weight: 700;
+            color: var(--text-dark);
+            line-height: 1.2;
+        }
+
+        .analysis-kpi-card .kpi-target {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 8px;
+        }
+
+        .analysis-kpi-card .kpi-comparison {
+            display: flex;
+            gap: 12px;
+            margin-top: 12px;
+            padding-top: 12px;
+            border-top: 1px solid var(--border-color);
+        }
+
+        .analysis-kpi-card .comparison-item {
+            font-size: 0.75rem;
+        }
+
+        .analysis-kpi-card .comparison-label {
+            color: var(--text-light);
+        }
+
+        .analysis-kpi-card .comparison-value {
+            font-family: 'Poppins', sans-serif;
+            font-weight: 600;
+        }
+
+        .analysis-kpi-card .comparison-value.positive {
+            color: var(--blue-400);
+        }
+
+        .analysis-kpi-card .comparison-value.negative {
+            color: var(--red-400);
+        }
+
+        .analysis-kpi-card .comparison-value.neutral {
+            color: var(--text-light);
+        }
+
+        /* 分析グラフセクション */
+        .analysis-chart-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .chart-type-selector {
+            display: flex;
+            gap: 8px;
+            margin-bottom: 20px;
+        }
+
+        .chart-type-btn {
+            padding: 8px 16px;
+            border: 1px solid var(--border-color);
+            background: var(--bg-white);
+            color: var(--text-light);
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.8rem;
+            transition: all 0.2s;
+        }
+
+        .chart-type-btn:hover {
+            border-color: var(--primary-blue);
+            color: var(--primary-blue);
+        }
+
+        .chart-type-btn.active {
+            background: var(--primary-blue);
+            border-color: var(--primary-blue);
+            color: white;
+        }
+
+        /* 設定ページ */
+        .settings-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            border: 1px solid var(--border-color);
+        }
+
+        .settings-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .settings-table th {
+            text-align: left;
+            padding: 12px;
+            font-size: 0.8rem;
+            font-weight: 600;
+            color: var(--text-light);
+            border-bottom: 2px solid var(--border-color);
+            background: var(--bg-light);
+        }
+
+        .settings-table td {
+            padding: 12px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        .settings-table td:first-child {
+            font-weight: 500;
+            color: var(--text-dark);
+        }
+
+        .settings-input {
+            width: 80px;
+            padding: 8px 12px;
+            border: 1px solid var(--border-color);
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-family: 'Poppins', sans-serif;
+            text-align: right;
+        }
+
+        .settings-input:focus {
+            outline: none;
+            border-color: var(--primary-blue);
+        }
+
+        .settings-unit {
+            font-size: 0.8rem;
+            color: var(--text-light);
+            margin-left: 4px;
+        }
+
+        .settings-actions {
+            margin-top: 24px;
+            display: flex;
+            justify-content: flex-end;
+            gap: 12px;
+        }
+
+        .save-btn {
+            background: var(--primary-blue);
+            border: none;
+            color: white;
+            padding: 12px 24px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-size: 0.9rem;
+            font-weight: 500;
+            transition: background 0.2s;
+        }
+
+        .save-btn:hover {
+            background: #1548B8;
+        }
+
+        .save-btn:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+        }
+
+        .settings-message {
+            padding: 12px 16px;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            margin-bottom: 16px;
+            display: none;
+        }
+
+        .settings-message.success {
+            background: var(--blue-50);
+            color: var(--blue-500);
+            display: block;
+        }
+
+        .settings-message.error {
+            background: var(--red-50);
+            color: var(--red-400);
+            display: block;
+        }
+
         @media (max-width: 1024px) {
             .kpi-summary {
                 grid-template-columns: repeat(2, 1fr);
@@ -635,10 +1072,10 @@
     <header class="top-header">
         <div class="logo">
             <svg viewBox="0 0 40 40" fill="none" xmlns="http://www.w3.org/2000/svg">
-                <path d="M20 4C12 4 6 10 6 18C6 22 8 25.5 11 28C11 28 10 32 8 36C12 34 16 32 18 31C18.6 31 19.3 31 20 31C28 31 34 25 34 18C34 10 28 4 20 4Z" stroke="#5A6A7A" stroke-width="2.5" fill="none"/>
-                <circle cx="14" cy="17" r="2" fill="#5A6A7A"/>
-                <circle cx="20" cy="17" r="2" fill="#5A6A7A"/>
-                <path d="M12 22C12 22 15 25 20 25C25 25 28 22 28 22" stroke="#5A6A7A" stroke-width="2" stroke-linecap="round" fill="none"/>
+                <path d="M20 4C12 4 6 10 6 18C6 22 8 25.5 11 28C11 28 10 32 8 36C12 34 16 32 18 31C18.6 31 19.3 31 20 31C28 31 34 25 34 18C34 10 28 4 20 4Z" stroke="#1155cc" stroke-width="2.5" fill="none"/>
+                <circle cx="14" cy="17" r="2" fill="#1155cc"/>
+                <circle cx="20" cy="17" r="2" fill="#1155cc"/>
+                <path d="M12 22C12 22 15 25 20 25C25 25 28 22 28 22" stroke="#1155cc" stroke-width="2" stroke-linecap="round" fill="none"/>
             </svg>
             <span class="logo-text">DigiMan</span>
         </div>
@@ -653,14 +1090,52 @@
         </div>
     </header>
 
-    <div class="dashboard">
-        <div class="page-title">
-            <h1>稼働報酬チーム営業KPI確認シート<span class="progress-badge" id="progressBadge">標準進捗: --%</span></h1>
-            <p class="subtitle" id="dateInfo">月次ビュー</p>
-        </div>
+    <!-- アプリコンテナ（サイドバー + メイン） -->
+    <div class="app-container">
+        <!-- サイドバー -->
+        <aside class="sidebar" id="sidebar">
+            <button class="sidebar-toggle" id="sidebarToggle" onclick="toggleSidebar()">
+                <svg width="12" height="12" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" id="toggleIcon">
+                    <path d="M15 18l-6-6 6-6"/>
+                </svg>
+            </button>
+            <nav class="sidebar-nav">
+                <button class="sidebar-item active" data-tab="overview" onclick="switchTab('overview')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <rect x="3" y="3" width="7" height="7"/>
+                        <rect x="14" y="3" width="7" height="7"/>
+                        <rect x="14" y="14" width="7" height="7"/>
+                        <rect x="3" y="14" width="7" height="7"/>
+                    </svg>
+                    <span class="sidebar-item-text">概要</span>
+                </button>
+                <button class="sidebar-item" data-tab="analysis" onclick="switchTab('analysis')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M18 20V10M12 20V4M6 20v-6"/>
+                    </svg>
+                    <span class="sidebar-item-text">分析</span>
+                </button>
+                <button class="sidebar-item" data-tab="settings" onclick="switchTab('settings')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <circle cx="12" cy="12" r="3"/>
+                        <path d="M19.4 15a1.65 1.65 0 00.33 1.82l.06.06a2 2 0 010 2.83 2 2 0 01-2.83 0l-.06-.06a1.65 1.65 0 00-1.82-.33 1.65 1.65 0 00-1 1.51V21a2 2 0 01-2 2 2 2 0 01-2-2v-.09A1.65 1.65 0 009 19.4a1.65 1.65 0 00-1.82.33l-.06.06a2 2 0 01-2.83 0 2 2 0 010-2.83l.06-.06a1.65 1.65 0 00.33-1.82 1.65 1.65 0 00-1.51-1H3a2 2 0 01-2-2 2 2 0 012-2h.09A1.65 1.65 0 004.6 9a1.65 1.65 0 00-.33-1.82l-.06-.06a2 2 0 010-2.83 2 2 0 012.83 0l.06.06a1.65 1.65 0 001.82.33H9a1.65 1.65 0 001-1.51V3a2 2 0 012-2 2 2 0 012 2v.09a1.65 1.65 0 001 1.51 1.65 1.65 0 001.82-.33l.06-.06a2 2 0 012.83 0 2 2 0 010 2.83l-.06.06a1.65 1.65 0 00-.33 1.82V9a1.65 1.65 0 001.51 1H21a2 2 0 012 2 2 2 0 01-2 2h-.09a1.65 1.65 0 00-1.51 1z"/>
+                    </svg>
+                    <span class="sidebar-item-text">設定</span>
+                </button>
+            </nav>
+        </aside>
 
-        <div class="error-message" id="errorMessage"></div>
+        <!-- メインコンテンツ -->
+        <div class="main-content">
+            <div class="dashboard">
+                <div class="page-title">
+                    <h1>稼働報酬チーム営業KPI確認シート<span class="progress-badge" id="progressBadge">標準進捗: --%</span></h1>
+                    <p class="subtitle" id="dateInfo">月次ビュー</p>
+                </div>
 
+                <div class="error-message" id="errorMessage"></div>
+
+        <!-- 概要タブ（既存のダッシュボード） -->
         <div id="mainContent" style="display: none;">
             <div class="kpi-summary" id="kpiSummary"></div>
             <div class="analysis-section" id="analysisSection"></div>
@@ -698,8 +1173,83 @@
             </div>
         </div>
 
-        <div class="footer">
-            &copy; DigiMan Inc.
+        <!-- 分析タブ -->
+        <div id="analysisContent" style="display: none;">
+            <div class="analysis-filter-section" id="analysisFilterSection">
+                <div class="filter-group-label">案件で絞り込み</div>
+                <div class="filter-row" id="analysisProjectFilterRow"></div>
+
+                <div class="filter-group-label">担当者で絞り込み</div>
+                <div class="filter-row" id="analysisMemberFilterRow"></div>
+
+                <div class="selected-tags empty" id="analysisSelectedTags"></div>
+
+                <div class="filter-date-row">
+                    <label>期間:</label>
+                    <input type="date" id="analysisStartDate">
+                    <span>〜</span>
+                    <input type="date" id="analysisEndDate">
+                    <button class="filter-btn" onclick="applyAnalysisFilters()">適用</button>
+                </div>
+            </div>
+
+            <!-- 実数指標 -->
+            <div class="analysis-kpi-section">
+                <div class="analysis-kpi-title">実数指標</div>
+                <div class="analysis-kpi-grid" id="analysisNumberKPIs"></div>
+            </div>
+
+            <!-- 率指標 -->
+            <div class="analysis-kpi-section">
+                <div class="analysis-kpi-title">率指標</div>
+                <div class="analysis-kpi-grid" id="analysisRateKPIs"></div>
+            </div>
+
+            <!-- 日次推移グラフ -->
+            <div class="analysis-chart-section">
+                <div class="section-title">日次推移グラフ</div>
+                <div class="chart-type-selector">
+                    <button class="chart-type-btn active" data-chart="calls">架電数</button>
+                    <button class="chart-type-btn" data-chart="pr">PR数</button>
+                    <button class="chart-type-btn" data-chart="appo">アポ数</button>
+                    <button class="chart-type-btn" data-chart="callToPR">架電toPR率</button>
+                    <button class="chart-type-btn" data-chart="prToAppo">PRtoアポ率</button>
+                    <button class="chart-type-btn" data-chart="callToAppo">架電toアポ率</button>
+                    <button class="chart-type-btn" data-chart="callsPerHour">架電数/H</button>
+                </div>
+                <div class="chart-container">
+                    <canvas id="analysisDailyChart"></canvas>
+                </div>
+            </div>
+        </div>
+
+        <!-- 設定タブ -->
+        <div id="settingsContent" style="display: none;">
+            <div class="settings-section">
+                <div class="section-title">案件別 目標値設定</div>
+                <div class="settings-message" id="settingsMessage"></div>
+                <table class="settings-table">
+                    <thead>
+                        <tr>
+                            <th>案件名</th>
+                            <th>架電toPR率</th>
+                            <th>PRtoアポ率</th>
+                            <th>架電toアポ率</th>
+                            <th>架電数/H</th>
+                        </tr>
+                    </thead>
+                    <tbody id="settingsTableBody"></tbody>
+                </table>
+                <div class="settings-actions">
+                    <button class="save-btn" onclick="saveSettingsData()" id="saveSettingsBtn">保存する</button>
+                </div>
+            </div>
+        </div>
+
+                <div class="footer">
+                    &copy; DigiMan Inc.
+                </div>
+            </div>
         </div>
     </div>
 
@@ -709,24 +1259,50 @@
         let selectedProjects = [];
         let selectedMembers = [];
 
+        // 分析ページ用
+        let analysisData = null;
+        let analysisSelectedProjects = [];
+        let analysisSelectedMembers = [];
+        let analysisChart = null;
+        let settingsData = null;
+        let currentChartType = 'calls';
+
         const colors = {
-            primary: '#1A56DB',
-            darkNavy: '#0F2444',
-            success: '#10B981',
-            warning: '#F59E0B',
-            danger: '#EF4444',
-            call: '#1A56DB',
-            appo: '#7C3AED'
+            // メインカラー
+            primary: '#1155cc',
+            primaryCyan: '#00a2da',
+            darkNavy: '#082558',
+
+            // ステータスカラー（淡い色）
+            success: '#86aaec',       // 青系（達成）
+            warning: '#ede07d',       // 黄系（注意）
+            danger: '#ef947a',        // 赤系（未達）
+
+            // グラフ用
+            call: '#1155cc',          // 架電（メインブルー）
+            appo: '#00a2da',          // アポ（シアン）
+
+            // グラデーション用
+            blue: {
+                light: '#c2d6f9',
+                medium: '#86aaec',
+                dark: '#1155cc'
+            },
+            yellow: {
+                light: '#f4edb6',
+                medium: '#ede07d',
+                dark: '#e8d335'
+            },
+            red: {
+                light: '#fecec0',
+                medium: '#ef947a',
+                dark: '#e04f24'
+            }
         };
 
-        const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbz1ZDCczUFxuSL0mjHq_VTFotjst_vZssGJPIizQ3XALil5ekqq7-SJkjPcqBFyN2V28g/exec';
+        const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R1p0qvySu0BW8GYKJKCKzHJ4Ny11FtkV/exec';
 
-        document.addEventListener('DOMContentLoaded', function() {
-            if (!localStorage.getItem('gasApiUrl')) {
-                localStorage.setItem('gasApiUrl', DEFAULT_API_URL);
-            }
-            loadData();
-        });
+        // 既存のDOMContentLoadedイベントは下で統合
 
         async function loadData() {
             const url = localStorage.getItem('gasApiUrl');
@@ -1062,7 +1638,7 @@
                                 <div class="stat-value">${m.actualAppointments}/${m.targetAppointments}</div>
                             </div>
                             <div class="stat-item">
-                                <div class="stat-label">架電→アポ</div>
+                                <div class="stat-label">架電toアポ</div>
                                 <div class="stat-value">${m.callToAppointmentActual}%</div>
                             </div>
                         </div>
@@ -1113,7 +1689,7 @@
                     responsive: true,
                     maintainAspectRatio: false,
                     plugins: {
-                        legend: { labels: { color: '#6B7280' } },
+                        legend: { labels: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } },
                         annotation: {
                             annotations: {
                                 line1: {
@@ -1123,14 +1699,14 @@
                                     borderColor: colors.darkNavy,
                                     borderWidth: 2,
                                     borderDash: [5, 5],
-                                    label: { display: true, content: `標準 ${standardProgress}%`, position: 'end', color: '#fff', backgroundColor: colors.darkNavy }
+                                    label: { display: true, content: `標準 ${standardProgress}%`, position: 'end', color: '#fff', backgroundColor: colors.darkNavy, font: { family: "'Poppins', sans-serif" } }
                                 }
                             }
                         }
                     },
                     scales: {
-                        y: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
-                        x: { grid: { display: false }, ticks: { color: '#6B7280' } }
+                        y: { beginAtZero: true, grid: { color: '#e4e8ef' }, ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } } },
+                        x: { grid: { display: false }, ticks: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } }
                     }
                 }
             });
@@ -1151,8 +1727,8 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
-                        y: { grid: { display: false }, ticks: { color: '#6B7280' } }
+                        x: { beginAtZero: true, grid: { color: '#e4e8ef' }, ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } } },
+                        y: { grid: { display: false }, ticks: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } }
                     }
                 }
             });
@@ -1169,8 +1745,8 @@
                     maintainAspectRatio: false,
                     plugins: { legend: { display: false } },
                     scales: {
-                        x: { beginAtZero: true, grid: { color: '#E5E7EB' }, ticks: { color: '#6B7280' } },
-                        y: { grid: { display: false }, ticks: { color: '#6B7280' } }
+                        x: { beginAtZero: true, grid: { color: '#e4e8ef' }, ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } } },
+                        y: { grid: { display: false }, ticks: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } }
                     }
                 }
             });
@@ -1194,6 +1770,618 @@
 
         function hideLoading() {
             document.getElementById('loadingOverlay').classList.add('hidden');
+        }
+
+        // ========================================
+        // タブナビゲーション
+        // ========================================
+
+        function initTabs() {
+            document.querySelectorAll('.tab-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    const tabId = this.dataset.tab;
+                    switchTab(tabId);
+                });
+            });
+        }
+
+        function switchTab(tabId) {
+            // サイドバーアイテムの状態更新
+            document.querySelectorAll('.sidebar-item').forEach(btn => {
+                btn.classList.toggle('active', btn.dataset.tab === tabId);
+            });
+
+            // 全タブコンテンツを非表示
+            document.getElementById('mainContent').style.display = 'none';
+            document.getElementById('analysisContent').style.display = 'none';
+            document.getElementById('settingsContent').style.display = 'none';
+
+            if (tabId === 'overview') {
+                document.getElementById('mainContent').style.display = 'block';
+            } else if (tabId === 'analysis') {
+                document.getElementById('analysisContent').style.display = 'block';
+                loadAnalysisData();
+            } else if (tabId === 'settings') {
+                document.getElementById('settingsContent').style.display = 'block';
+                loadSettingsData();
+            }
+        }
+
+        function toggleSidebar() {
+            const sidebar = document.getElementById('sidebar');
+            const toggleIcon = document.getElementById('toggleIcon');
+            sidebar.classList.toggle('collapsed');
+
+            // アイコンの向きを変更
+            if (sidebar.classList.contains('collapsed')) {
+                toggleIcon.innerHTML = '<path d="M9 18l6-6-6-6"/>';
+            } else {
+                toggleIcon.innerHTML = '<path d="M15 18l-6-6 6-6"/>';
+            }
+        }
+
+        // ========================================
+        // 分析ページ
+        // ========================================
+
+        async function loadAnalysisData() {
+            const url = localStorage.getItem('gasApiUrl');
+            const startDate = document.getElementById('analysisStartDate').value;
+            const endDate = document.getElementById('analysisEndDate').value;
+
+            let apiUrl = `${url}?type=rawdata`;
+            if (startDate) apiUrl += `&startDate=${startDate}`;
+            if (endDate) apiUrl += `&endDate=${endDate}`;
+
+            showLoading();
+            try {
+                const response = await fetch(apiUrl);
+                analysisData = await response.json();
+                console.log('Analysis data loaded:', analysisData);
+                if (analysisData.error) throw new Error(analysisData.error);
+                renderAnalysisPage();
+            } catch (error) {
+                console.error('Analysis data load error:', error);
+                document.getElementById('analysisNumberKPIs').innerHTML = '<p style="color: var(--text-light);">データの読み込みに失敗しました</p>';
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderAnalysisPage() {
+            if (!analysisData) return;
+
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+            initChartTypeSelector();
+        }
+
+        function renderAnalysisFilters() {
+            // 概要ページと同じデータソース（月次ビュー）を使用
+            if (!currentData || !currentData.members) {
+                console.error('No current data available');
+                return;
+            }
+
+            // 月次ビューから案件と担当者を取得
+            const projects = [...new Set(currentData.members.map(m => m.project))];
+            const members = [...new Set(currentData.members.map(m => m.name))];
+
+            // 案件→担当者のマッピング
+            const projectMemberMap = {};
+            currentData.members.forEach(m => {
+                if (!projectMemberMap[m.project]) {
+                    projectMemberMap[m.project] = new Set();
+                }
+                projectMemberMap[m.project].add(m.name);
+            });
+
+            // 担当者→案件のマッピング
+            const memberProjectMap = {};
+            currentData.members.forEach(m => {
+                if (!memberProjectMap[m.name]) {
+                    memberProjectMap[m.name] = new Set();
+                }
+                memberProjectMap[m.name].add(m.project);
+            });
+
+            // 双方向連動フィルター
+            let availableProjects = new Set(projects);
+            let availableMembers = new Set(members);
+
+            // 担当者が選択されている場合
+            if (analysisSelectedMembers.length > 0) {
+                availableProjects = new Set();
+                analysisSelectedMembers.forEach(m => {
+                    if (memberProjectMap[m]) {
+                        memberProjectMap[m].forEach(p => availableProjects.add(p));
+                    }
+                });
+            }
+
+            // 案件が選択されている場合
+            if (analysisSelectedProjects.length > 0) {
+                availableMembers = new Set();
+                analysisSelectedProjects.forEach(p => {
+                    if (projectMemberMap[p]) {
+                        projectMemberMap[p].forEach(name => availableMembers.add(name));
+                    }
+                });
+            }
+
+            const availableProjectList = [...availableProjects];
+            const availableMemberList = [...availableMembers];
+
+            // フィルタリング
+            analysisSelectedProjects = analysisSelectedProjects.filter(p => availableProjects.has(p));
+            analysisSelectedMembers = analysisSelectedMembers.filter(m => availableMembers.has(m));
+
+            const hasSelection = analysisSelectedProjects.length > 0 || analysisSelectedMembers.length > 0;
+
+            document.getElementById('analysisProjectFilterRow').innerHTML = availableProjectList.map(p => `
+                <button class="filter-btn ${analysisSelectedProjects.includes(p) ? 'active' : ''}"
+                        onclick="toggleAnalysisFilter('project', '${p}')">${p}</button>
+            `).join('');
+
+            document.getElementById('analysisMemberFilterRow').innerHTML = availableMemberList.map(m => `
+                <button class="filter-btn ${analysisSelectedMembers.includes(m) ? 'active' : ''}"
+                        onclick="toggleAnalysisFilter('member', '${m}')">${m}</button>
+            `).join('');
+
+            const tagsContainer = document.getElementById('analysisSelectedTags');
+            tagsContainer.className = hasSelection ? 'selected-tags' : 'selected-tags empty';
+            tagsContainer.innerHTML = `
+                ${analysisSelectedProjects.map(p => `
+                    <span class="tag project">
+                        ${p}
+                        <span class="tag-remove" onclick="removeAnalysisTag('project', '${p}')">&times;</span>
+                    </span>
+                `).join('')}
+                ${analysisSelectedMembers.map(m => `
+                    <span class="tag member">
+                        ${m}
+                        <span class="tag-remove" onclick="removeAnalysisTag('member', '${m}')">&times;</span>
+                    </span>
+                `).join('')}
+                ${hasSelection ? '<button class="clear-all-btn" onclick="clearAnalysisFilters()">クリア</button>' : ''}
+            `;
+        }
+
+        function toggleAnalysisFilter(type, value) {
+            if (type === 'project') {
+                if (analysisSelectedProjects.includes(value)) {
+                    analysisSelectedProjects = analysisSelectedProjects.filter(p => p !== value);
+                } else {
+                    analysisSelectedProjects.push(value);
+                }
+            } else {
+                if (analysisSelectedMembers.includes(value)) {
+                    analysisSelectedMembers = analysisSelectedMembers.filter(m => m !== value);
+                } else {
+                    analysisSelectedMembers.push(value);
+                }
+            }
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+        }
+
+        function removeAnalysisTag(type, value) {
+            if (type === 'project') {
+                analysisSelectedProjects = analysisSelectedProjects.filter(p => p !== value);
+            } else {
+                analysisSelectedMembers = analysisSelectedMembers.filter(m => m !== value);
+            }
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+        }
+
+        function clearAnalysisFilters() {
+            analysisSelectedProjects = [];
+            analysisSelectedMembers = [];
+            renderAnalysisFilters();
+            renderAnalysisKPIs();
+            renderAnalysisChart();
+        }
+
+        function applyAnalysisFilters() {
+            loadAnalysisData();
+        }
+
+        function getFilteredAnalysisData() {
+            if (!analysisData || !analysisData.records) return { records: [], aggregated: null };
+
+            let filtered = analysisData.records;
+
+            if (analysisSelectedProjects.length > 0) {
+                filtered = filtered.filter(r => analysisSelectedProjects.includes(r.project));
+            }
+            if (analysisSelectedMembers.length > 0) {
+                filtered = filtered.filter(r => analysisSelectedMembers.includes(r.name));
+            }
+
+            // 再集計
+            const aggregated = aggregateFilteredData(filtered);
+
+            return { records: filtered, aggregated: aggregated };
+        }
+
+        function aggregateFilteredData(records) {
+            let totalCalls = 0, totalPR = 0, totalAppo = 0, totalCallTime = 0;
+            const dailyMap = {};
+
+            records.forEach(r => {
+                totalCalls += r.calls;
+                totalPR += r.pr;
+                totalAppo += r.appo;
+                totalCallTime += r.callTime;
+
+                if (r.date) {
+                    if (!dailyMap[r.date]) {
+                        dailyMap[r.date] = { calls: 0, pr: 0, appo: 0, callTime: 0 };
+                    }
+                    dailyMap[r.date].calls += r.calls;
+                    dailyMap[r.date].pr += r.pr;
+                    dailyMap[r.date].appo += r.appo;
+                    dailyMap[r.date].callTime += r.callTime;
+                }
+            });
+
+            return {
+                totals: {
+                    calls: totalCalls,
+                    pr: totalPR,
+                    appo: totalAppo,
+                    callTime: totalCallTime,
+                    callToPR: totalCalls > 0 ? Math.round(totalPR / totalCalls * 10000) / 100 : 0,
+                    prToAppo: totalPR > 0 ? Math.round(totalAppo / totalPR * 10000) / 100 : 0,
+                    callToAppo: totalCalls > 0 ? Math.round(totalAppo / totalCalls * 10000) / 100 : 0,
+                    callsPerHour: totalCallTime > 0 ? Math.round(totalCalls / totalCallTime * 10) / 10 : 0
+                },
+                daily: Object.keys(dailyMap).sort().map(date => ({
+                    date: date,
+                    ...dailyMap[date],
+                    callToPR: dailyMap[date].calls > 0 ? Math.round(dailyMap[date].pr / dailyMap[date].calls * 10000) / 100 : 0,
+                    prToAppo: dailyMap[date].pr > 0 ? Math.round(dailyMap[date].appo / dailyMap[date].pr * 10000) / 100 : 0,
+                    callToAppo: dailyMap[date].calls > 0 ? Math.round(dailyMap[date].appo / dailyMap[date].calls * 10000) / 100 : 0,
+                    callsPerHour: dailyMap[date].callTime > 0 ? Math.round(dailyMap[date].calls / dailyMap[date].callTime * 10) / 10 : 0
+                }))
+            };
+        }
+
+        function renderAnalysisKPIs() {
+            const { aggregated } = getFilteredAnalysisData();
+            if (!aggregated) return;
+
+            const totals = aggregated.totals;
+            const comparisons = analysisData.comparisons || { lastMonth: {}, allTime: {} };
+
+            // 実数指標
+            document.getElementById('analysisNumberKPIs').innerHTML = `
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">架電数</div>
+                    <div class="kpi-main-value">${totals.calls.toLocaleString()}</div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">PR数</div>
+                    <div class="kpi-main-value">${totals.pr.toLocaleString()}</div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">アポ数</div>
+                    <div class="kpi-main-value">${totals.appo.toLocaleString()}</div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">架電数/H</div>
+                    <div class="kpi-main-value">${totals.callsPerHour}</div>
+                </div>
+            `;
+
+            // 率指標
+            document.getElementById('analysisRateKPIs').innerHTML = `
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">架電toPR率</div>
+                    <div class="kpi-main-value">${totals.callToPR}%</div>
+                    <div class="kpi-comparison">
+                        <div class="comparison-item">
+                            <span class="comparison-label">先月比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.lastMonth.callToPR)}">${formatComparison(comparisons.lastMonth.callToPR)}</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">通算比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.allTime.callToPR)}">${formatComparison(comparisons.allTime.callToPR)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">PRtoアポ率</div>
+                    <div class="kpi-main-value">${totals.prToAppo}%</div>
+                    <div class="kpi-comparison">
+                        <div class="comparison-item">
+                            <span class="comparison-label">先月比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.lastMonth.prToAppo)}">${formatComparison(comparisons.lastMonth.prToAppo)}</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">通算比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.allTime.prToAppo)}">${formatComparison(comparisons.allTime.prToAppo)}</span>
+                        </div>
+                    </div>
+                </div>
+                <div class="analysis-kpi-card">
+                    <div class="kpi-name">架電toアポ率</div>
+                    <div class="kpi-main-value">${totals.callToAppo}%</div>
+                    <div class="kpi-comparison">
+                        <div class="comparison-item">
+                            <span class="comparison-label">先月比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.lastMonth.callToAppo)}">${formatComparison(comparisons.lastMonth.callToAppo)}</span>
+                        </div>
+                        <div class="comparison-item">
+                            <span class="comparison-label">通算比: </span>
+                            <span class="comparison-value ${getComparisonClass(comparisons.allTime.callToAppo)}">${formatComparison(comparisons.allTime.callToAppo)}</span>
+                        </div>
+                    </div>
+                </div>
+            `;
+        }
+
+        function getComparisonClass(value) {
+            if (!value || value === 0) return 'neutral';
+            return value > 0 ? 'positive' : 'negative';
+        }
+
+        function formatComparison(value) {
+            if (!value || value === 0) return '±0.0%';
+            const prefix = value > 0 ? '+' : '';
+            return `${prefix}${value.toFixed(1)}%`;
+        }
+
+        function initChartTypeSelector() {
+            document.querySelectorAll('.chart-type-btn').forEach(btn => {
+                btn.addEventListener('click', function() {
+                    document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+                    this.classList.add('active');
+                    currentChartType = this.dataset.chart;
+                    renderAnalysisChart();
+                });
+            });
+        }
+
+        function renderAnalysisChart() {
+            const { aggregated } = getFilteredAnalysisData();
+            if (!aggregated || !aggregated.daily || aggregated.daily.length === 0) {
+                if (analysisChart) {
+                    analysisChart.destroy();
+                    analysisChart = null;
+                }
+                return;
+            }
+
+            const daily = aggregated.daily;
+            const labels = daily.map(d => d.date);
+
+            let data, label, color;
+            switch (currentChartType) {
+                case 'calls':
+                    data = daily.map(d => d.calls);
+                    label = '架電数';
+                    color = colors.call;
+                    break;
+                case 'pr':
+                    data = daily.map(d => d.pr);
+                    label = 'PR数';
+                    color = colors.primaryCyan;
+                    break;
+                case 'appo':
+                    data = daily.map(d => d.appo);
+                    label = 'アポ数';
+                    color = colors.success;
+                    break;
+                case 'callToPR':
+                    data = daily.map(d => d.callToPR);
+                    label = '架電toPR率 (%)';
+                    color = colors.warning;
+                    break;
+                case 'prToAppo':
+                    data = daily.map(d => d.prToAppo);
+                    label = 'PRtoアポ率 (%)';
+                    color = '#00a2da';
+                    break;
+                case 'callToAppo':
+                    data = daily.map(d => d.callToAppo);
+                    label = '架電toアポ率 (%)';
+                    color = '#e04f24';
+                    break;
+                case 'callsPerHour':
+                    data = daily.map(d => d.callsPerHour);
+                    label = '架電数/H';
+                    color = colors.danger;
+                    break;
+            }
+
+            if (analysisChart) {
+                analysisChart.destroy();
+            }
+
+            const ctx = document.getElementById('analysisDailyChart').getContext('2d');
+            analysisChart = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: labels,
+                    datasets: [{
+                        label: label,
+                        data: data,
+                        borderColor: color,
+                        backgroundColor: color + '20',
+                        fill: true,
+                        tension: 0.3,
+                        pointRadius: 4,
+                        pointBackgroundColor: color
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            labels: {
+                                color: '#787b7f',
+                                font: { family: "'Noto Sans JP', sans-serif" }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: { color: '#e4e8ef' },
+                            ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } }
+                        },
+                        x: {
+                            grid: { display: false },
+                            ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } }
+                        }
+                    }
+                }
+            });
+        }
+
+        // ========================================
+        // 設定ページ
+        // ========================================
+
+        async function loadSettingsData() {
+            const url = localStorage.getItem('gasApiUrl');
+            showLoading();
+            try {
+                const response = await fetch(`${url}?type=settings`);
+                settingsData = await response.json();
+                if (settingsData.error) throw new Error(settingsData.error);
+                renderSettingsPage();
+            } catch (error) {
+                console.error('Settings data load error:', error);
+            } finally {
+                hideLoading();
+            }
+        }
+
+        function renderSettingsPage() {
+            if (!settingsData) return;
+
+            const projects = settingsData.availableProjects || [];
+            const existingSettings = {};
+
+            // 既存設定をマップ化
+            (settingsData.settings || []).forEach(s => {
+                existingSettings[s.project] = s;
+            });
+
+            const tbody = document.getElementById('settingsTableBody');
+            tbody.innerHTML = projects.map(project => {
+                const setting = existingSettings[project] || {
+                    callToPRTarget: '',
+                    prToAppoTarget: '',
+                    callToAppoTarget: '',
+                    callsPerHourTarget: ''
+                };
+
+                return `
+                    <tr data-project="${project}">
+                        <td>${project}</td>
+                        <td>
+                            <input type="number" class="settings-input" data-field="callToPRTarget"
+                                   value="${setting.callToPRTarget || ''}" step="0.1">
+                            <span class="settings-unit">%</span>
+                        </td>
+                        <td>
+                            <input type="number" class="settings-input" data-field="prToAppoTarget"
+                                   value="${setting.prToAppoTarget || ''}" step="0.1">
+                            <span class="settings-unit">%</span>
+                        </td>
+                        <td>
+                            <input type="number" class="settings-input" data-field="callToAppoTarget"
+                                   value="${setting.callToAppoTarget || ''}" step="0.1">
+                            <span class="settings-unit">%</span>
+                        </td>
+                        <td>
+                            <input type="number" class="settings-input" data-field="callsPerHourTarget"
+                                   value="${setting.callsPerHourTarget || ''}" step="0.1">
+                        </td>
+                    </tr>
+                `;
+            }).join('');
+        }
+
+        async function saveSettingsData() {
+            const btn = document.getElementById('saveSettingsBtn');
+            const message = document.getElementById('settingsMessage');
+            btn.disabled = true;
+
+            const rows = document.querySelectorAll('#settingsTableBody tr');
+            const data = [];
+
+            rows.forEach(row => {
+                const project = row.dataset.project;
+                const callToPRTarget = parseFloat(row.querySelector('[data-field="callToPRTarget"]').value) || 0;
+                const prToAppoTarget = parseFloat(row.querySelector('[data-field="prToAppoTarget"]').value) || 0;
+                const callToAppoTarget = parseFloat(row.querySelector('[data-field="callToAppoTarget"]').value) || 0;
+                const callsPerHourTarget = parseFloat(row.querySelector('[data-field="callsPerHourTarget"]').value) || 0;
+
+                data.push({
+                    project,
+                    callToPRTarget,
+                    prToAppoTarget,
+                    callToAppoTarget,
+                    callsPerHourTarget
+                });
+            });
+
+            try {
+                const url = localStorage.getItem('gasApiUrl');
+                const response = await fetch(url, {
+                    method: 'POST',
+                    headers: { 'Content-Type': 'application/json' },
+                    body: JSON.stringify({ type: 'settings', data: data })
+                });
+                const result = await response.json();
+
+                if (result.success) {
+                    message.textContent = '設定を保存しました';
+                    message.className = 'settings-message success';
+                } else {
+                    throw new Error(result.error || '保存に失敗しました');
+                }
+            } catch (error) {
+                message.textContent = 'エラー: ' + error.message;
+                message.className = 'settings-message error';
+            } finally {
+                btn.disabled = false;
+                setTimeout(() => {
+                    message.className = 'settings-message';
+                }, 3000);
+            }
+        }
+
+        // 初期化時にタブを設定
+        document.addEventListener('DOMContentLoaded', function() {
+            if (!localStorage.getItem('gasApiUrl')) {
+                localStorage.setItem('gasApiUrl', DEFAULT_API_URL);
+            }
+            initTabs();
+
+            // デフォルトの日付範囲を設定（今月）
+            const today = new Date();
+            const firstDay = new Date(today.getFullYear(), today.getMonth(), 1);
+            document.getElementById('analysisStartDate').value = formatDateInput(firstDay);
+            document.getElementById('analysisEndDate').value = formatDateInput(today);
+
+            loadData();
+        });
+
+        function formatDateInput(date) {
+            const year = date.getFullYear();
+            const month = String(date.getMonth() + 1).padStart(2, '0');
+            const day = String(date.getDate()).padStart(2, '0');
+            return `${year}-${month}-${day}`;
         }
     </script>
 </body>
