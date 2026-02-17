@@ -1297,13 +1297,17 @@
                     <div class="progress-toggle-section" id="progressToggleSection" style="display: none;">
                         <span class="toggle-label">比較基準:</span>
                         <div class="progress-toggle-buttons">
+                            <button class="progress-toggle-btn" data-mode="yesterday" onclick="toggleProgressMode('yesterday')">
+                                前日終了時
+                                <span class="toggle-value" id="yesterdayProgressValue">--%</span>
+                            </button>
                             <button class="progress-toggle-btn active" data-mode="today" onclick="toggleProgressMode('today')">
                                 本日時点
                                 <span class="toggle-value" id="todayProgressValue">--%</span>
                             </button>
-                            <button class="progress-toggle-btn" data-mode="yesterday" onclick="toggleProgressMode('yesterday')">
-                                前日終了時
-                                <span class="toggle-value" id="yesterdayProgressValue">--%</span>
+                            <button class="progress-toggle-btn" data-mode="tomorrow" onclick="toggleProgressMode('tomorrow')">
+                                明日時点
+                                <span class="toggle-value" id="tomorrowProgressValue">--%</span>
                             </button>
                         </div>
                     </div>
@@ -1441,10 +1445,11 @@
         let selectedProjects = [];
         let selectedMembers = [];
 
-        // 標準進捗モード（today: 本日時点, yesterday: 前日終了時）
+        // 標準進捗モード（yesterday: 前日終了時, today: 本日時点, tomorrow: 明日時点）
         let currentProgressMode = 'today';
-        let todayProgress = 0;
         let yesterdayProgress = 0;
+        let todayProgress = 0;
+        let tomorrowProgress = 0;
 
         // 分析ページ用
         let analysisData = null;
@@ -1525,13 +1530,19 @@
             // 本日時点の標準進捗
             todayProgress = parseFloat(metadata.standardProgress);
 
-            // 前日終了時点の標準進捗を計算
+            // 経過日数と全稼働日数
             const elapsedDays = parseInt(metadata.elapsedDays) || 0;
             const totalDays = parseInt(metadata.totalDays) || 1;
+
+            // 前日終了時点の標準進捗を計算
             yesterdayProgress = Math.max(0, parseFloat((Math.floor(elapsedDays - 1) / totalDays * 100).toFixed(2)));
 
+            // 明日時点の標準進捗を計算（100%を超えない）
+            tomorrowProgress = Math.min(100, parseFloat(((elapsedDays + 1) / totalDays * 100).toFixed(2)));
+
             // 現在のモードに応じた標準進捗を使用
-            const standardProgress = currentProgressMode === 'today' ? todayProgress : yesterdayProgress;
+            const standardProgress = currentProgressMode === 'today' ? todayProgress :
+                                     currentProgressMode === 'yesterday' ? yesterdayProgress : tomorrowProgress;
 
             document.getElementById('dateInfo').textContent =
                 `経過 ${metadata.elapsedDays}日 / 全${metadata.totalDays}稼働日`;
@@ -1540,8 +1551,9 @@
 
             // トグルセクションを表示して値を設定
             document.getElementById('progressToggleSection').style.display = 'flex';
-            document.getElementById('todayProgressValue').textContent = `${todayProgress}%`;
             document.getElementById('yesterdayProgressValue').textContent = `${yesterdayProgress}%`;
+            document.getElementById('todayProgressValue').textContent = `${todayProgress}%`;
+            document.getElementById('tomorrowProgressValue').textContent = `${tomorrowProgress}%`;
 
             renderKPISummary(summary, standardProgress);
             renderAnalysis(members, summary, standardProgress);
@@ -1789,7 +1801,8 @@
                 filtered = filtered.filter(m => selectedMembers.includes(m.name));
             }
 
-            const standardProgress = currentProgressMode === 'today' ? todayProgress : yesterdayProgress;
+            const standardProgress = currentProgressMode === 'today' ? todayProgress :
+                                     currentProgressMode === 'yesterday' ? yesterdayProgress : tomorrowProgress;
             renderMemberCards(filtered, standardProgress);
             renderCharts(filtered, standardProgress);
         }
@@ -1803,7 +1816,8 @@
             });
 
             // 標準進捗バッジを更新
-            const standardProgress = mode === 'today' ? todayProgress : yesterdayProgress;
+            const standardProgress = mode === 'today' ? todayProgress :
+                                     mode === 'yesterday' ? yesterdayProgress : tomorrowProgress;
             document.getElementById('progressBadge').textContent = `標準進捗: ${standardProgress}%`;
 
             // データがあれば再描画
@@ -2131,7 +2145,8 @@
             try {
                 const response = await fetch(apiUrl);
                 analysisData = await response.json();
-                console.log('Analysis data loaded from API');
+                console.log('Analysis data loaded from API:', analysisData);
+                console.log('previousMonthDaily:', analysisData.previousMonthDaily);
                 if (analysisData.error) throw new Error(analysisData.error);
                 setAnalysisCache(cacheKey, analysisData);
                 renderAnalysisPage();
@@ -2464,6 +2479,23 @@
 
         function toggleMonthCompare() {
             compareMonthEnabled = document.getElementById('compareMonthToggle').checked;
+
+            // 前月比較時は率系のみ表示（架電数/PR数/アポ数を非表示）
+            const absoluteCharts = ['calls', 'pr', 'appo'];
+            document.querySelectorAll('.chart-type-btn').forEach(btn => {
+                const chartType = btn.dataset.chart;
+                if (absoluteCharts.includes(chartType)) {
+                    btn.style.display = compareMonthEnabled ? 'none' : '';
+                }
+            });
+
+            // 現在選択中が非表示になった場合、架電toPR率に切り替え
+            if (compareMonthEnabled && absoluteCharts.includes(currentChartType)) {
+                currentChartType = 'callToPR';
+                document.querySelectorAll('.chart-type-btn').forEach(b => b.classList.remove('active'));
+                document.querySelector('.chart-type-btn[data-chart="callToPR"]').classList.add('active');
+            }
+
             renderAnalysisChart();
         }
 
@@ -2507,15 +2539,16 @@
             color = config.color;
             data = daily.map(d => d[config.field]);
 
-            // 前月データの取得（比較モード時）
+            // 前月平均値の計算（比較モード時）
+            let prevMonthAvg = null;
             if (compareMonthEnabled && analysisData && analysisData.previousMonthDaily) {
                 const prevDaily = analysisData.previousMonthDaily.daily;
-                // 当月の日付に対応する前月のデータを取得
-                prevData = daily.map(d => {
-                    const day = new Date(d.date).getDate();
-                    const prevDay = prevDaily.find(p => p.day === day);
-                    return prevDay ? prevDay[config.field] : null;
-                });
+                // 値がある日だけで平均を計算
+                const validValues = prevDaily.filter(d => d[config.field] > 0).map(d => d[config.field]);
+                if (validValues.length > 0) {
+                    prevMonthAvg = validValues.reduce((sum, v) => sum + v, 0) / validValues.length;
+                    prevMonthAvg = Math.round(prevMonthAvg * 100) / 100;
+                }
             }
 
             if (analysisChart) {
@@ -2534,19 +2567,18 @@
                 pointBackgroundColor: color
             }];
 
-            // 比較モード時に前月データを追加
-            if (compareMonthEnabled && prevData) {
-                const prevMonth = analysisData.previousMonthDaily ? analysisData.previousMonthDaily.month : '前月';
+            // 比較モード時に前月平均を水平線で追加
+            if (compareMonthEnabled && prevMonthAvg !== null) {
                 datasets.push({
-                    label: '前月 ' + label,
-                    data: prevData,
-                    borderColor: '#b1b4ba',
-                    backgroundColor: '#b1b4ba20',
+                    label: '前月平均 ' + config.label + ' (' + prevMonthAvg + ')',
+                    data: Array(data.length).fill(prevMonthAvg),
+                    borderColor: '#e04f24',
+                    backgroundColor: 'transparent',
                     fill: false,
-                    tension: 0.3,
-                    pointRadius: 4,
-                    pointBackgroundColor: '#b1b4ba',
-                    borderDash: [5, 5]
+                    tension: 0,
+                    pointRadius: 0,
+                    borderWidth: 2,
+                    borderDash: [8, 4]
                 });
             }
 

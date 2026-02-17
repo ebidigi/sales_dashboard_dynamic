@@ -9,16 +9,23 @@ sales_dashboard_dynamic/
 ├── index.html          # ダッシュボードUI（Chart.js使用）
 ├── deploy.sh           # UI更新スクリプト
 ├── gas/
-│   └── Code.js         # GAS APIコード（参照用）
+│   ├── Code.js         # GAS APIコード（参照用）
+│   └── Code.gs.txt     # GAS APIコード（バックアップ）
 ```
 
 ## デプロイ方法
 
-### UI変更時（推奨）
+### UI変更時
 ```bash
 ./deploy.sh
 ```
 これで `index.html` が `/Users/ebineryota/sales_dashboard_dynamic.html` にコピーされる。
+
+### GAS変更時
+1. GASエディタを開く
+2. `gas/Code.js` の内容をコピー＆ペースト
+3. **デプロイ → デプロイを管理 → 鉛筆アイコン → バージョン「新バージョン」→ デプロイ**
+   - ※「新しいデプロイ」だとURLが変わるので注意
 
 ### ブラウザで確認
 ```
@@ -33,16 +40,33 @@ file:///Users/ebineryota/sales_dashboard_dynamic.html
 ## API情報
 
 - **API URL**: `https://script.google.com/macros/s/AKfycbz1ZDCczUFxuSL0mjHq_VTFotjst_vZssGJPIizQ3XALil5ekqq7-SJkjPcqBFyN2V28g/exec`
-- **データソース**: スプレッドシート「月次ビュー」シート
+- **データソース**: スプレッドシート「月次ビュー」「実績rawdata」シート
 
-## グラフ構成
+## 機能構成
 
-1. **担当者カード** - 個人別の進捗（プログレスバー）
-2. **案件別 架電進捗 vs アポ進捗** - 案件ごとの比較棒グラフ
-3. **案件別 架電進捗率ランキング** - 案件の横棒グラフ
-4. **案件別 アポ進捗率ランキング** - 案件の横棒グラフ
+### 概要タブ
+- **標準進捗トグル**: 「本日時点」/「前日終了時」で比較基準を切り替え
+- **担当者カード**: 個人別の進捗（プログレスバー）+ 乖離実数表示（±N件）
+- **案件別グラフ**: 架電進捗 vs アポ進捗の比較棒グラフ、ランキング
+
+### 分析タブ
+- **フィルター**: 案件・担当者・期間で絞り込み
+- **数値KPI**: 架電数、PR数、アポ数、各種歩留まり率
+- **日次推移グラフ**:
+  - 架電数 / PR数 / アポ数 / 架電toPR率 / PRtoアポ率 / 架電toアポ率 / 架電数/H
+  - **前月と比較**: チェック時は歩留まり率4種のみ表示、前月平均を水平線で表示
+
+### 設定タブ
+- 案件別の目標値設定
+
+## UI特徴
+
+- **固定サイドバー**: スクロールしても左サイドバーは固定
+- **Notionスタイル**: サイドバーの折りたたみ・展開
+- **キャッシュ機能**: 分析データは5分間キャッシュ
 
 ## 注意事項
 
 - UI変更後は `./deploy.sh` を実行
 - ブラウザキャッシュが残る場合は `Cmd+Shift+R` でハードリロード
+- 分析データのキャッシュクリア: コンソールで `localStorage.removeItem('analysisDataCache'); location.reload();`
