@@ -1838,8 +1838,12 @@
             const sorted = [...members].sort((a, b) => b.appointmentProgress - a.appointmentProgress);
 
             document.getElementById('memberGrid').innerHTML = sorted.map(m => {
-                const callStatus = getStatus(m.callProgress, standardProgress);
-                const appoStatus = getStatus(m.appointmentProgress, standardProgress);
+                // 目標が0の場合、実績が1以上あれば100%達成とみなす
+                const effectiveCallProgress = (m.targetCalls === 0 && m.actualCalls > 0) ? 100 : m.callProgress;
+                const effectiveAppoProgress = (m.targetAppointments === 0 && m.actualAppointments > 0) ? 100 : m.appointmentProgress;
+
+                const callStatus = getStatus(effectiveCallProgress, standardProgress);
+                const appoStatus = getStatus(effectiveAppoProgress, standardProgress);
 
                 // 標準進捗との乖離を計算（実数）
                 const expectedCalls = Math.round(m.targetCalls * standardProgress / 100);
@@ -1863,21 +1867,21 @@
                             <span class="progress-label">架電</span>
                             <div class="progress-bar-container">
                                 <div class="progress-bar">
-                                    <div class="fill ${callStatus}" style="width: ${Math.min(m.callProgress, 100)}%;"></div>
+                                    <div class="fill ${callStatus}" style="width: ${Math.min(effectiveCallProgress, 100)}%;"></div>
                                     <div class="target-line" style="left: ${standardProgress}%;"></div>
                                 </div>
                             </div>
-                            <span class="progress-value ${callStatus}">${m.callProgress}%</span>
+                            <span class="progress-value ${callStatus}">${effectiveCallProgress}%</span>
                         </div>
                         <div class="progress-row">
                             <span class="progress-label">アポ</span>
                             <div class="progress-bar-container">
                                 <div class="progress-bar">
-                                    <div class="fill ${appoStatus}" style="width: ${Math.min(m.appointmentProgress, 100)}%;"></div>
+                                    <div class="fill ${appoStatus}" style="width: ${Math.min(effectiveAppoProgress, 100)}%;"></div>
                                     <div class="target-line" style="left: ${standardProgress}%;"></div>
                                 </div>
                             </div>
-                            <span class="progress-value ${appoStatus}">${m.appointmentProgress}%</span>
+                            <span class="progress-value ${appoStatus}">${effectiveAppoProgress}%</span>
                         </div>
                         <div class="stats-row">
                             <div class="stat-item">
@@ -1922,12 +1926,18 @@
             });
 
             const projectLabels = Object.keys(projectData);
-            const projectCallProgress = projectLabels.map(p =>
-                projectData[p].targetCalls > 0 ? Math.round((projectData[p].totalCalls / projectData[p].targetCalls) * 1000) / 10 : 0
-            );
-            const projectAppoProgress = projectLabels.map(p =>
-                projectData[p].targetAppo > 0 ? Math.round((projectData[p].totalAppo / projectData[p].targetAppo) * 1000) / 10 : 0
-            );
+            const projectCallProgress = projectLabels.map(p => {
+                if (projectData[p].targetCalls === 0) {
+                    return projectData[p].totalCalls > 0 ? 100 : 0;
+                }
+                return Math.round((projectData[p].totalCalls / projectData[p].targetCalls) * 1000) / 10;
+            });
+            const projectAppoProgress = projectLabels.map(p => {
+                if (projectData[p].targetAppo === 0) {
+                    return projectData[p].totalAppo > 0 ? 100 : 0;
+                }
+                return Math.round((projectData[p].totalAppo / projectData[p].targetAppo) * 1000) / 10;
+            });
 
             charts.compare = new Chart(document.getElementById('progressCompareChart'), {
                 type: 'bar',
