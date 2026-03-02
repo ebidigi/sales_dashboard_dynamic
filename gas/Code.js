@@ -613,3 +613,169 @@ function testGetSettings() {
   const result = getSettings();
   Logger.log(JSON.stringify(result, null, 2));
 }
+
+// ========================================
+// 月次同期機能
+// ========================================
+
+// スプレッドシートを開いた時にカスタムメニューを追加
+function onOpen() {
+  const ui = SpreadsheetApp.getUi();
+  ui.createMenu('月次管理')
+    .addItem('月次ビューを同期', 'showSyncDialog')
+    .addToUi();
+}
+
+// 同期ダイアログを表示
+function showSyncDialog() {
+  const ui = SpreadsheetApp.getUi();
+  const result = ui.prompt(
+    '月次ビュー同期',
+    '対象月を数字で入力してください（例: 3）',
+    ui.ButtonSet.OK_CANCEL
+  );
+
+  if (result.getSelectedButton() !== ui.Button.OK) return;
+
+  const targetMonth = parseInt(result.getResponseText());
+  if (isNaN(targetMonth) || targetMonth < 1 || targetMonth > 12) {
+    ui.alert('1〜12の数字を入力してください');
+    return;
+  }
+
+  syncMonthlyView(targetMonth);
+  ui.alert('月次ビューを ' + targetMonth + '月に同期しました');
+}
+
+/**
+ * 目論見入力シートの対象月データを元に月次ビューを再生成する
+ * @param {number} targetMonth - 対象月（1-12）
+ */
+function syncMonthlyView(targetMonth) {
+  const ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  const inputSheet = ss.getSheetByName('目論見入力');
+  const monthlySheet = ss.getSheetByName('月次ビュー');
+  const masterSheet = ss.getSheetByName('マスタ');
+
+  // 1. 目論見入力から対象月の行を取得（行番号はシート上の行番号=1始まり）
+  const inputData = inputSheet.getDataRange().getValues();
+  const targetRows = []; // { sheetRow: シート行番号 }
+  for (let i = 1; i < inputData.length; i++) {
+    const month = parseInt(inputData[i][2]);
+    if (month === targetMonth) {
+      targetRows.push({ sheetRow: i + 1 }); // シート行番号（1始まり、ヘッダーが1行目）
+    }
+  }
+
+  if (targetRows.length === 0) {
+    throw new Error('目論見入力に ' + targetMonth + '月のデータが見つかりません');
+  }
+
+  // 2. マスタシートの月初・月末を更新
+  const today = new Date();
+  const year = today.getFullYear();
+  // 対象月が現在月より大きい場合は今年、小さい場合も今年（年度跨ぎは別途対応）
+  const monthStart = new Date(year, targetMonth - 1, 1);
+  const monthEnd = new Date(year, targetMonth, 0); // 月末日
+  masterSheet.getRange('E3').setValue(monthStart); // 月初
+  masterSheet.getRange('E4').setValue(monthEnd);    // 月末
+
+  // 3. 月次ビューのデータ行を再生成
+  const dataStartRow = 5; // 月次ビューのデータ開始行
+  const memberCount = targetRows.length;
+
+  // 既存のデータ行と合計行をクリア（ヘッダー4行は維持）
+  const lastRow = monthlySheet.getLastRow();
+  if (lastRow >= dataStartRow) {
+    monthlySheet.getRange(dataStartRow, 1, lastRow - dataStartRow + 1, 23).clear();
+  }
+
+  // 各担当者×案件の行を生成
+  for (let i = 0; i < memberCount; i++) {
+    const viewRow = dataStartRow + i; // 月次ビュー上の行番号
+    const inputRow = targetRows[i].sheetRow; // 目論見入力のシート行番号
+
+    const formulas = buildRowFormulas(viewRow, inputRow);
+    // 数式がある列のみセット（空文字列の列はスキップ）
+    for (let col = 0; col < formulas.length; col++) {
+      if (formulas[col] !== '') {
+        monthlySheet.getRange(viewRow, col + 1).setFormula(formulas[col]);
+      }
+    }
+  }
+
+  // 4. 空行 + 合計行を追加
+  const totalRow = dataStartRow + memberCount + 1; // 1行空けて合計
+  const lastDataRow = dataStartRow + memberCount - 1;
+
+  // 合計行: テキストを先に書き込み
+  monthlySheet.getRange(totalRow, 2).setValue('計');
+
+  // 合計行: 数式を個別にセット
+  monthlySheet.getRange(totalRow, 4).setFormula('=H' + totalRow + '/G' + totalRow);  // ペース(架電)
+  monthlySheet.getRange(totalRow, 5).setFormula('=K' + totalRow + '/J' + totalRow);  // ペース(アポ)
+  monthlySheet.getRange(totalRow, 6).setFormula('=SUM(F' + dataStartRow + ':F' + lastDataRow + ')');  // 売上合計
+  monthlySheet.getRange(totalRow, 7).setFormula('=SUM(G' + dataStartRow + ':G' + lastDataRow + ')');  // 目標架電合計
+  monthlySheet.getRange(totalRow, 8).setFormula('=SUM(H' + dataStartRow + ':H' + lastDataRow + ')');  // 実績架電合計
+  monthlySheet.getRange(totalRow, 10).setFormula('=SUM(J' + dataStartRow + ':J' + lastDataRow + ')'); // 目標アポ合計
+  monthlySheet.getRange(totalRow, 11).setFormula('=SUM(K' + dataStartRow + ':K' + lastDataRow + ')'); // 実績アポ合計
+
+  // 拡張合計行
+  const extTotalRow = totalRow + 1;
+  monthlySheet.getRange(extTotalRow, 2).setValue('計（エステック、アズビル、日経AI）');
+  monthlySheet.getRange(extTotalRow, 6).setFormula('=F' + totalRow + '+2100000');
+
+  SpreadsheetApp.flush();
+}
+
+/**
+ * 月次ビューの1行分の数式配列を生成
+ * @param {number} viewRow - 月次ビューの行番号
+ * @param {number} inputRow - 目論見入力の行番号
+ * @returns {string[]} 23列分の数式配列
+ */
+function buildRowFormulas(viewRow, inputRow) {
+  const r = viewRow; // 月次ビューの行番号（数式内で使用）
+  const ir = inputRow; // 目論見入力の行番号
+
+  // ペース計算の分母（担当者ごとの経過率を参照）
+  const paceFormula = function(numCol, denomCol) {
+    return '=IF(' + denomCol + r + '="","",IFERROR(' + numCol + r + '/(' + denomCol + r + '*IF($B' + r + '="@原田幸輝",\'マスタ\'!$E$17,IF($B' + r + '="@三浦 宏成/ Miura Hironari",\'マスタ\'!$E$22,IF($B' + r + '="@笹田 怜央/sasada reo",\'マスタ\'!$E$27,\'マスタ\'!$E$8)))),""))';
+  };
+
+  // SUMIFS: 実績rawdataからの集計
+  const sumifs = function(dataCol) {
+    return '=SUMIFS(\'実績rawdata\'!' + dataCol + ':' + dataCol + ',\'実績rawdata\'!A:A,$B' + r + ',\'実績rawdata\'!B:B,$C' + r + ',\'実績rawdata\'!C:C,">="&\'マスタ\'!$E$3,\'実績rawdata\'!C:C,"<="&\'マスタ\'!$E$4)';
+  };
+
+  return [
+    '',                                              // A: 空
+    '=\'目論見入力\'!A' + ir,                         // B: 担当者
+    '=\'目論見入力\'!B' + ir,                         // C: 案件
+    paceFormula('H', 'G'),                           // D: ペース(架電)
+    paceFormula('K', 'J'),                           // E: ペース(アポ)
+    '=\'目論見入力\'!K' + ir,                         // F: 売上
+    '=\'目論見入力\'!D' + ir,                         // G: 目標架電数
+    sumifs('E'),                                     // H: 実績架電数
+    '=IFERROR(H' + r + '/G' + r + ',"")',            // I: 架電進捗率
+    '=\'目論見入力\'!F' + ir,                         // J: 目標アポ数
+    sumifs('G'),                                     // K: 実績アポ数
+    '=IFERROR(K' + r + '/J' + r + ',"")',            // L: アポ進捗率
+    sumifs('F'),                                     // M: 実績PR数
+    '=\'目論見入力\'!G' + ir,                         // N: 架電数/H目標
+    '=IFERROR(H' + r + '/U' + r + ',0)',             // O: 架電数/H実績
+    '=\'目論見入力\'!H' + ir,                         // P: 架電toアポ目標
+    '=IFERROR(K' + r + '/H' + r + ',"")',            // Q: 架電toアポ実績
+    '=IFERROR(M' + r + '/H' + r + ')',               // R: 架電to着電
+    '=IFERROR(K' + r + '/M' + r + ')',               // S: 着電toアポ
+    '=\'目論見入力\'!I' + ir,                         // T: 稼働H目標
+    sumifs('D'),                                     // U: 稼働H実績
+    '=G' + r + '*$P$2',                              // V: 対裏目標架電数
+    '=J' + r + '*$P$2'                               // W: 対裏目標アポ数
+  ];
+}
+
+// テスト用: 3月に同期
+function testSync3() {
+  syncMonthlyView(3);
+}

@@ -304,6 +304,89 @@
             font-size: 0.9rem;
         }
 
+        /* 売上目標カード */
+        .sales-target-card {
+            background: linear-gradient(135deg, var(--dark-navy) 0%, #2c3e6b 100%);
+            border-radius: 12px;
+            padding: 28px 32px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            gap: 24px;
+        }
+
+        .sales-target-left {
+            display: flex;
+            align-items: baseline;
+            gap: 16px;
+        }
+
+        .sales-target-label {
+            font-size: 0.85rem;
+            color: rgba(255, 255, 255, 0.6);
+            font-weight: 500;
+            letter-spacing: 0.5px;
+            text-transform: uppercase;
+        }
+
+        .sales-target-amount {
+            font-family: 'Poppins', sans-serif;
+            font-size: 2rem;
+            font-weight: 700;
+            color: white;
+        }
+
+        .sales-target-right {
+            display: flex;
+            align-items: center;
+            gap: 32px;
+        }
+
+        .sales-target-item {
+            text-align: center;
+        }
+
+        .sales-target-item-label {
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 4px;
+        }
+
+        .sales-target-item-value {
+            font-family: 'Poppins', sans-serif;
+            font-size: 1.5rem;
+            font-weight: 600;
+            color: white;
+        }
+
+        .sales-target-bar-wrap {
+            flex: 1;
+            min-width: 200px;
+            max-width: 340px;
+        }
+
+        .sales-target-bar-info {
+            display: flex;
+            justify-content: space-between;
+            font-size: 0.75rem;
+            color: rgba(255, 255, 255, 0.5);
+            margin-bottom: 6px;
+        }
+
+        .sales-target-bar {
+            height: 10px;
+            background: rgba(255, 255, 255, 0.15);
+            border-radius: 5px;
+            overflow: hidden;
+        }
+
+        .sales-target-bar-fill {
+            height: 100%;
+            border-radius: 5px;
+            transition: width 0.6s ease;
+        }
+
         /* KPIサマリー */
         .kpi-summary {
             display: grid;
@@ -1317,6 +1400,7 @@
 
         <!-- 概要タブ（既存のダッシュボード） -->
         <div id="mainContent" style="display: none;">
+            <div class="sales-target-card" id="salesTargetCard"></div>
             <div class="kpi-summary" id="kpiSummary"></div>
             <div class="analysis-section" id="analysisSection"></div>
             <div class="filter-section" id="filterSection"></div>
@@ -1348,6 +1432,32 @@
                     <h3>アポ進捗率</h3>
                     <div class="chart-container">
                         <canvas id="appoRankChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">個人別 進捗状況</div>
+            <div class="charts-section">
+                <div class="chart-card full-width">
+                    <h3>架電進捗 vs アポ進捗（標準進捗ライン付き）</h3>
+                    <div class="chart-container">
+                        <canvas id="memberProgressCompareChart"></canvas>
+                    </div>
+                </div>
+            </div>
+
+            <div class="section-title">個人別 進捗率ランキング</div>
+            <div class="charts-section">
+                <div class="chart-card">
+                    <h3>架電進捗率</h3>
+                    <div class="chart-container">
+                        <canvas id="memberCallRankChart"></canvas>
+                    </div>
+                </div>
+                <div class="chart-card">
+                    <h3>アポ進捗率</h3>
+                    <div class="chart-container">
+                        <canvas id="memberAppoRankChart"></canvas>
                     </div>
                 </div>
             </div>
@@ -1555,11 +1665,45 @@
             document.getElementById('todayProgressValue').textContent = `${todayProgress}%`;
             document.getElementById('tomorrowProgressValue').textContent = `${tomorrowProgress}%`;
 
+            renderSalesTarget(summary, members);
             renderKPISummary(summary, standardProgress);
             renderAnalysis(members, summary, standardProgress);
             renderFilters(members);
             renderMemberCards(members, standardProgress);
             renderCharts(members, standardProgress);
+        }
+
+        function renderSalesTarget(summary, members) {
+            const teamTarget = 12200000;
+            const currentSales = summary.extendedTotalSales || summary.totalSales;
+            const rate = teamTarget > 0 ? Math.round(currentSales / teamTarget * 1000) / 10 : 0;
+            const barWidth = Math.min(rate, 100);
+            const barColor = rate >= 100 ? '#4ade80' : rate >= 80 ? '#facc15' : '#f87171';
+            const remaining = teamTarget - currentSales;
+
+            document.getElementById('salesTargetCard').innerHTML = `
+                <div>
+                    <div class="sales-target-label">チーム売上</div>
+                    <div class="sales-target-amount">¥${currentSales.toLocaleString()}</div>
+                </div>
+                <div class="sales-target-bar-wrap">
+                    <div class="sales-target-bar-info">
+                        <span>達成率 ${rate}%</span>
+                        <span>目標 ¥${teamTarget.toLocaleString()}</span>
+                    </div>
+                    <div class="sales-target-bar">
+                        <div class="sales-target-bar-fill" style="width:${barWidth}%; background:${barColor};"></div>
+                    </div>
+                </div>
+                <div class="sales-target-right">
+                    <div class="sales-target-item">
+                        <div class="sales-target-item-label">残り</div>
+                        <div class="sales-target-item-value" style="color:${remaining > 0 ? '#f87171' : '#4ade80'}">
+                            ${remaining > 0 ? '¥' + remaining.toLocaleString() : '達成!'}
+                        </div>
+                    </div>
+                </div>
+            `;
         }
 
         function renderKPISummary(summary, standardProgress) {
@@ -1970,6 +2114,107 @@
                     scales: {
                         y: { beginAtZero: true, grid: { color: '#e4e8ef' }, ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } } },
                         x: { grid: { display: false }, ticks: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } }
+                    }
+                }
+            });
+
+            // 個人別に集約
+            const memberData = {};
+            members.forEach(m => {
+                const name = m.name;
+                if (!memberData[name]) {
+                    memberData[name] = { totalCalls: 0, targetCalls: 0, totalAppo: 0, targetAppo: 0 };
+                }
+                memberData[name].totalCalls += m.actualCalls;
+                memberData[name].targetCalls += m.targetCalls;
+                memberData[name].totalAppo += m.actualAppointments;
+                memberData[name].targetAppo += m.targetAppointments;
+            });
+
+            const memberLabels = Object.keys(memberData);
+            const memberCallProgress = memberLabels.map(n => {
+                if (memberData[n].targetCalls === 0) {
+                    return memberData[n].totalCalls > 0 ? 100 : 0;
+                }
+                return Math.round((memberData[n].totalCalls / memberData[n].targetCalls) * 1000) / 10;
+            });
+            const memberAppoProgress = memberLabels.map(n => {
+                if (memberData[n].targetAppo === 0) {
+                    return memberData[n].totalAppo > 0 ? 100 : 0;
+                }
+                return Math.round((memberData[n].totalAppo / memberData[n].targetAppo) * 1000) / 10;
+            });
+
+            charts.memberCompare = new Chart(document.getElementById('memberProgressCompareChart'), {
+                type: 'bar',
+                data: {
+                    labels: memberLabels,
+                    datasets: [
+                        { label: '架電進捗', data: memberCallProgress, backgroundColor: colors.call, borderRadius: 4 },
+                        { label: 'アポ進捗', data: memberAppoProgress, backgroundColor: colors.appo, borderRadius: 4 }
+                    ]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { labels: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } },
+                        annotation: {
+                            annotations: {
+                                line1: {
+                                    type: 'line',
+                                    yMin: standardProgress,
+                                    yMax: standardProgress,
+                                    borderColor: colors.darkNavy,
+                                    borderWidth: 2,
+                                    borderDash: [5, 5],
+                                    label: { display: true, content: `標準 ${standardProgress}%`, position: 'end', color: '#fff', backgroundColor: colors.darkNavy, font: { family: "'Poppins', sans-serif" } }
+                                }
+                            }
+                        }
+                    },
+                    scales: {
+                        y: { beginAtZero: true, grid: { color: '#e4e8ef' }, ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } } },
+                        x: { grid: { display: false }, ticks: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } }
+                    }
+                }
+            });
+
+            const memberCallRankData = memberLabels.map((n, i) => ({ name: n, progress: memberCallProgress[i] })).sort((a, b) => b.progress - a.progress);
+            const memberAppoRankData = memberLabels.map((n, i) => ({ name: n, progress: memberAppoProgress[i] })).sort((a, b) => b.progress - a.progress);
+
+            charts.memberCallRank = new Chart(document.getElementById('memberCallRankChart'), {
+                type: 'bar',
+                data: {
+                    labels: memberCallRankData.map(d => d.name),
+                    datasets: [{ data: memberCallRankData.map(d => d.progress), backgroundColor: memberCallRankData.map(d => getStatusColor(d.progress, standardProgress)), borderRadius: 4 }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: '#e4e8ef' }, ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } } },
+                        y: { grid: { display: false }, ticks: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } }
+                    }
+                }
+            });
+
+            charts.memberAppoRank = new Chart(document.getElementById('memberAppoRankChart'), {
+                type: 'bar',
+                data: {
+                    labels: memberAppoRankData.map(d => d.name),
+                    datasets: [{ data: memberAppoRankData.map(d => d.progress), backgroundColor: memberAppoRankData.map(d => getStatusColor(d.progress, standardProgress)), borderRadius: 4 }]
+                },
+                options: {
+                    indexAxis: 'y',
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: { legend: { display: false } },
+                    scales: {
+                        x: { beginAtZero: true, grid: { color: '#e4e8ef' }, ticks: { color: '#787b7f', font: { family: "'Poppins', sans-serif" } } },
+                        y: { grid: { display: false }, ticks: { color: '#787b7f', font: { family: "'Noto Sans JP', sans-serif" } } }
                     }
                 }
             });
