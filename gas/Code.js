@@ -18,6 +18,9 @@ function doGet(e) {
       case 'settings':
         data = getSettings();
         break;
+      case 'pipeline':
+        data = getPipelineData();
+        break;
       default:
         data = getMonthlyViewData();
     }
@@ -778,4 +781,78 @@ function buildRowFormulas(viewRow, inputRow) {
 // テスト用: 3月に同期
 function testSync3() {
   syncMonthlyView(3);
+}
+
+// ========================================
+// パイプラインデータ取得
+// ========================================
+
+const PIPELINE_SPREADSHEET_ID = '1NXxjF81tvMHywaTzQfmuC_1-FqgOFhoyZIHsUZHIobE';
+
+function getPipelineData() {
+  const ss = SpreadsheetApp.openById(PIPELINE_SPREADSHEET_ID);
+
+  // 案件管理DB
+  const dbSheet = ss.getSheetByName('案件管理DB');
+  const dbData = dbSheet.getDataRange().getValues();
+  const dbHeaders = dbData[0];
+  const deals = [];
+
+  for (let i = 1; i < dbData.length; i++) {
+    const row = dbData[i];
+    if (!row[0] && !row[1]) continue; // 空行スキップ
+
+    deals.push({
+      owner: row[0] || '',
+      dealName: row[1] || '',
+      phase: row[2] || '',
+      type: row[3] || '',
+      amountMax: row[4] || '',
+      amountMin: row[5] || '',
+      startDate: row[6] ? Utilities.formatDate(new Date(row[6]), 'Asia/Tokyo', 'yyyy/MM/dd') : '',
+      taskName: row[7] || '',
+      deadline: row[8] ? Utilities.formatDate(new Date(row[8]), 'Asia/Tokyo', 'yyyy/MM/dd') : '',
+      startMonth: row[12] || '',
+      probability: row[13] || '',
+      expectedMax: row[14] || '',
+      expectedMin: row[15] || '',
+      memo: row[11] || ''
+    });
+  }
+
+  // 月別サマリー
+  const summarySheet = ss.getSheetByName('月別サマリー');
+  const summaryData = summarySheet.getDataRange().getValues();
+
+  // ヘッダー行（月名）
+  const months = [];
+  for (let col = 1; col < summaryData[0].length; col++) {
+    if (summaryData[0][col]) {
+      months.push(String(summaryData[0][col]));
+    }
+  }
+
+  // 各行のデータをオブジェクトに変換
+  const summary = {};
+  for (let i = 1; i < summaryData.length; i++) {
+    const label = summaryData[i][0];
+    if (!label) continue;
+    const values = [];
+    for (let col = 1; col <= months.length; col++) {
+      values.push(summaryData[i][col] !== undefined ? summaryData[i][col] : '');
+    }
+    summary[label] = values;
+  }
+
+  return {
+    deals: deals,
+    months: months,
+    summary: summary,
+    lastUpdated: new Date().toISOString()
+  };
+}
+
+function testGetPipelineData() {
+  const result = getPipelineData();
+  Logger.log(JSON.stringify(result, null, 2));
 }

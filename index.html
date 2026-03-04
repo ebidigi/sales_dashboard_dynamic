@@ -1309,6 +1309,135 @@
                 gap: 15px;
             }
         }
+
+        /* パイプラインタブ */
+        .pipeline-section {
+            background: var(--bg-white);
+            border-radius: 12px;
+            padding: 24px;
+            margin-bottom: 20px;
+            border: 1px solid var(--border-color);
+        }
+
+        .pipeline-summary-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+            gap: 12px;
+            margin-bottom: 16px;
+        }
+
+        .pipeline-summary-card {
+            background: var(--bg-light);
+            border-radius: 10px;
+            padding: 16px;
+            border: 1px solid var(--border-color);
+        }
+
+        .pipeline-summary-card .card-label {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-bottom: 4px;
+        }
+
+        .pipeline-summary-card .card-value {
+            font-size: 1.3rem;
+            font-weight: 700;
+            color: var(--text-dark);
+        }
+
+        .pipeline-summary-card .card-sub {
+            font-size: 0.75rem;
+            color: var(--text-light);
+            margin-top: 2px;
+        }
+
+        .pipeline-summary-card.danger .card-value {
+            color: var(--primary-red);
+        }
+
+        .pipeline-summary-card.success .card-value {
+            color: var(--primary-blue);
+        }
+
+        .pipeline-table {
+            width: 100%;
+            border-collapse: collapse;
+            font-size: 0.85rem;
+        }
+
+        .pipeline-table th {
+            background: var(--gray-100);
+            padding: 10px 12px;
+            text-align: left;
+            font-weight: 600;
+            color: var(--text-dark);
+            border-bottom: 2px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .pipeline-table td {
+            padding: 10px 12px;
+            border-bottom: 1px solid var(--border-color);
+            white-space: nowrap;
+        }
+
+        .pipeline-table tr:hover td {
+            background: var(--gray-50);
+        }
+
+        .pipeline-table .text-right {
+            text-align: right;
+        }
+
+        .phase-badge {
+            display: inline-block;
+            padding: 2px 10px;
+            border-radius: 12px;
+            font-size: 0.78rem;
+            font-weight: 500;
+        }
+
+        .phase-badge.proposal-before {
+            background: var(--yellow-50);
+            color: #b89e00;
+        }
+
+        .phase-badge.proposal-done {
+            background: var(--blue-50);
+            color: var(--primary-blue);
+        }
+
+        .phase-badge.lost {
+            background: var(--red-50);
+            color: var(--primary-red);
+        }
+
+        .phase-badge.won {
+            background: #e6f9e6;
+            color: #1a7a1a;
+        }
+
+        .type-badge {
+            display: inline-block;
+            padding: 2px 8px;
+            border-radius: 10px;
+            font-size: 0.75rem;
+        }
+
+        .type-badge.new {
+            background: var(--cyan-50);
+            color: var(--cyan-300);
+        }
+
+        .type-badge.existing {
+            background: var(--gray-100);
+            color: var(--text-light);
+        }
+
+        .deadline-warning {
+            color: var(--primary-red);
+            font-weight: 600;
+        }
     </style>
 </head>
 <body>
@@ -1358,6 +1487,12 @@
                         <path d="M18 20V10M12 20V4M6 20v-6"/>
                     </svg>
                     <span class="sidebar-item-text">分析</span>
+                </button>
+                <button class="sidebar-item" data-tab="pipeline" onclick="switchTab('pipeline')">
+                    <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
+                        <path d="M22 12h-4l-3 9L9 3l-3 9H2"/>
+                    </svg>
+                    <span class="sidebar-item-text">パイプライン</span>
                 </button>
                 <button class="sidebar-item" data-tab="settings" onclick="switchTab('settings')">
                     <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2">
@@ -1542,6 +1677,50 @@
             </div>
         </div>
 
+        <!-- パイプラインタブ -->
+        <div id="pipelineContent" style="display: none;">
+            <div class="pipeline-loading" id="pipelineLoading">
+                <div style="text-align:center;padding:40px;color:var(--text-light);">読み込み中...</div>
+            </div>
+
+            <!-- 月別サマリー -->
+            <div class="pipeline-section" id="pipelineSummarySection" style="display:none;">
+                <div class="section-title">月別サマリー</div>
+                <div class="pipeline-summary-grid" id="pipelineSummaryGrid"></div>
+                <div style="overflow-x:auto;margin-top:16px;">
+                    <table class="pipeline-table" id="pipelineSummaryTable">
+                        <thead id="pipelineSummaryHead"></thead>
+                        <tbody id="pipelineSummaryBody"></tbody>
+                    </table>
+                </div>
+            </div>
+
+            <!-- 案件管理DB -->
+            <div class="pipeline-section" id="pipelineDealsSection" style="display:none;">
+                <div class="section-title">案件管理DB</div>
+                <div style="overflow-x:auto;">
+                    <table class="pipeline-table" id="pipelineDealsTable">
+                        <thead>
+                            <tr>
+                                <th>担当者</th>
+                                <th>案件名</th>
+                                <th>フェーズ</th>
+                                <th>新規/既存</th>
+                                <th>上乗せMax</th>
+                                <th>上乗せMin</th>
+                                <th>確度</th>
+                                <th>見込Max</th>
+                                <th>見込Min</th>
+                                <th>次アクション</th>
+                                <th>締切日</th>
+                            </tr>
+                        </thead>
+                        <tbody id="pipelineDealsBody"></tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+
                 <div class="footer">
                     &copy; DigiMan Inc.
                 </div>
@@ -1665,7 +1844,7 @@
             document.getElementById('todayProgressValue').textContent = `${todayProgress}%`;
             document.getElementById('tomorrowProgressValue').textContent = `${tomorrowProgress}%`;
 
-            renderSalesTarget(summary, members);
+            renderSalesTarget(summary, members).then(() => {});
             renderKPISummary(summary, standardProgress);
             renderAnalysis(members, summary, standardProgress);
             renderFilters(members);
@@ -1673,8 +1852,37 @@
             renderCharts(members, standardProgress);
         }
 
-        function renderSalesTarget(summary, members) {
-            const teamTarget = 12200000;
+        async function renderSalesTarget(summary, members) {
+            // パイプラインの月別サマリーから売上目標を取得
+            let teamTarget = 12500000; // フォールバック
+            try {
+                if (!pipelineData) {
+                    const url = localStorage.getItem('gasApiUrl') || DEFAULT_API_URL;
+                    const controller = new AbortController();
+                    const timeout = setTimeout(() => controller.abort(), 8000);
+                    const response = await fetch(`${url}?type=pipeline`, { signal: controller.signal });
+                    clearTimeout(timeout);
+                    pipelineData = await response.json();
+                    if (pipelineData.deals) pipelineLoaded = true;
+                }
+                if (pipelineData && pipelineData.summary && pipelineData.summary['売上目標']) {
+                    // 当月のインデックスを特定
+                    const now = new Date();
+                    const currentMonth = now.getMonth() + 1; // 1-12
+                    const monthKey = pipelineData.summary['月キー'] || [];
+                    let idx = 0;
+                    for (let i = 0; i < monthKey.length; i++) {
+                        if (parseInt(monthKey[i]) === currentMonth) { idx = i; break; }
+                    }
+                    const rawTarget = pipelineData.summary['売上目標'][idx];
+                    if (rawTarget) {
+                        const parsed = typeof rawTarget === 'number' ? rawTarget : parseInt(String(rawTarget).replace(/,/g, ''));
+                        if (!isNaN(parsed) && parsed > 0) teamTarget = parsed;
+                    }
+                }
+            } catch (e) {
+                console.warn('売上目標の取得に失敗:', e);
+            }
             const currentSales = summary.extendedTotalSales || summary.totalSales;
             const rate = teamTarget > 0 ? Math.round(currentSales / teamTarget * 1000) / 10 : 0;
             const barWidth = Math.min(rate, 100);
@@ -2303,6 +2511,7 @@
             document.getElementById('mainContent').style.display = 'none';
             document.getElementById('analysisContent').style.display = 'none';
             document.getElementById('settingsContent').style.display = 'none';
+            document.getElementById('pipelineContent').style.display = 'none';
 
             // 比較基準トグルは概要タブのみ表示
             const toggleSection = document.getElementById('progressToggleSection');
@@ -2315,6 +2524,9 @@
             } else if (tabId === 'analysis') {
                 document.getElementById('analysisContent').style.display = 'block';
                 loadAnalysisData();
+            } else if (tabId === 'pipeline') {
+                document.getElementById('pipelineContent').style.display = 'block';
+                loadPipelineData();
             } else if (tabId === 'settings') {
                 document.getElementById('settingsContent').style.display = 'block';
                 loadSettingsData();
@@ -3042,6 +3254,202 @@
                     message.className = 'settings-message';
                 }, 3000);
             }
+        }
+
+        // ========================================
+        // パイプラインタブ
+        // ========================================
+        let pipelineData = null;
+        let pipelineLoaded = false;
+
+        async function loadPipelineData() {
+            if (pipelineLoaded && pipelineData) {
+                return; // キャッシュ済み
+            }
+
+            const loading = document.getElementById('pipelineLoading');
+            loading.style.display = 'block';
+            document.getElementById('pipelineSummarySection').style.display = 'none';
+            document.getElementById('pipelineDealsSection').style.display = 'none';
+
+            try {
+                const url = localStorage.getItem('gasApiUrl') || DEFAULT_API_URL;
+                const controller = new AbortController();
+                const timeout = setTimeout(() => controller.abort(), 15000);
+                const response = await fetch(`${url}?type=pipeline`, { signal: controller.signal });
+                clearTimeout(timeout);
+                pipelineData = await response.json();
+
+                if (pipelineData.error) throw new Error(pipelineData.error);
+                if (!pipelineData.deals) throw new Error('パイプラインAPIが未デプロイです。GASを再デプロイしてください。');
+
+                renderPipelineSummary(pipelineData);
+                renderPipelineDeals(pipelineData.deals);
+                pipelineLoaded = true;
+            } catch (error) {
+                const msg = error.name === 'AbortError' ? 'タイムアウト: GASにpipeline APIがデプロイされていない可能性があります' : error.message;
+                loading.innerHTML = `<div style="text-align:center;padding:40px;color:var(--primary-red);">読み込みエラー: ${msg}</div>`;
+                return;
+            }
+
+            loading.style.display = 'none';
+            document.getElementById('pipelineSummarySection').style.display = 'block';
+            document.getElementById('pipelineDealsSection').style.display = 'block';
+        }
+
+        function renderPipelineSummary(data) {
+            const { months, summary } = data;
+            const grid = document.getElementById('pipelineSummaryGrid');
+
+            // 今月のインデックス
+            const currentMonthIdx = 0;
+
+            // サマリーカード
+            const grossProfitGap = summary['粗利乖離'] ? summary['粗利乖離'][currentMonthIdx] : '';
+            const plCount = summary['PL件数'] ? summary['PL件数'][currentMonthIdx] : 0;
+            const coverMax = summary['確度加重カバー率Max'] ? summary['確度加重カバー率Max'][currentMonthIdx] : '';
+            const remainGapMax = summary['残り乖離（見込Max）'] ? summary['残り乖離（見込Max）'][currentMonthIdx] : '';
+            const plTotalMax = summary['PL合計Max'] ? summary['PL合計Max'][currentMonthIdx] : '';
+
+            grid.innerHTML = `
+                <div class="pipeline-summary-card danger">
+                    <div class="card-label">粗利乖離（${months[currentMonthIdx]}）</div>
+                    <div class="card-value">${formatCurrencyValue(grossProfitGap)}</div>
+                </div>
+                <div class="pipeline-summary-card">
+                    <div class="card-label">PL件数（${months[currentMonthIdx]}）</div>
+                    <div class="card-value">${plCount}件</div>
+                </div>
+                <div class="pipeline-summary-card success">
+                    <div class="card-label">PL合計Max（${months[currentMonthIdx]}）</div>
+                    <div class="card-value">${formatCurrencyValue(plTotalMax)}</div>
+                </div>
+                <div class="pipeline-summary-card">
+                    <div class="card-label">確度加重カバー率Max</div>
+                    <div class="card-value">${formatPercentValue(coverMax)}</div>
+                </div>
+                <div class="pipeline-summary-card danger">
+                    <div class="card-label">残り乖離（見込Max）</div>
+                    <div class="card-value">${formatCurrencyValue(remainGapMax)}</div>
+                </div>
+            `;
+
+            // サマリーテーブル
+            const thead = document.getElementById('pipelineSummaryHead');
+            const tbody = document.getElementById('pipelineSummaryBody');
+
+            thead.innerHTML = `<tr><th></th>${months.map(m => `<th class="text-right">${m}</th>`).join('')}</tr>`;
+
+            const displayRows = [
+                '売上目標', 'コスト', '粗利目標', '',
+                '売上見込', '粗利見込', '粗利乖離', '',
+                'PL件数', 'PL合計Max', 'PL合計Min',
+                'PL見込Max（確度加重）', 'PL見込Min（確度加重）', '',
+                '全額受注時カバー率', '確度加重カバー率Max', '確度加重カバー率Min',
+                '残り乖離（見込Max）', '残り乖離（見込Min）'
+            ];
+
+            const highlightRows = ['粗利乖離', '残り乖離（見込Max）', '残り乖離（見込Min）'];
+
+            tbody.innerHTML = displayRows.map(label => {
+                if (!label) return '<tr><td colspan="' + (months.length + 1) + '" style="height:8px;border:none;"></td></tr>';
+                const values = summary[label] || [];
+                const isHighlight = highlightRows.includes(label);
+                return `<tr${isHighlight ? ' style="font-weight:600;color:var(--primary-red);"' : ''}>
+                    <td style="font-weight:500;">${label}</td>
+                    ${months.map((_, i) => `<td class="text-right">${formatCellValue(values[i], label)}</td>`).join('')}
+                </tr>`;
+            }).join('');
+        }
+
+        function renderPipelineDeals(deals) {
+            const tbody = document.getElementById('pipelineDealsBody');
+            const today = new Date();
+            today.setHours(0, 0, 0, 0);
+
+            // 失注・受注を除外（進行中のみ）
+            const phaseOrder = { '提案済み': 0, '提案前': 1 };
+            const activeDeals = deals
+                .filter(d => d.phase && d.phase !== '失注' && d.phase !== '受注')
+                .sort((a, b) => (phaseOrder[a.phase] ?? 99) - (phaseOrder[b.phase] ?? 99));
+
+            tbody.innerHTML = activeDeals.map(d => {
+                const phaseClass = d.phase === '提案前' ? 'proposal-before' :
+                                   d.phase === '提案済み' ? 'proposal-done' :
+                                   d.phase === '失注' ? 'lost' :
+                                   d.phase === '受注' ? 'won' : '';
+                const typeClass = d.type === '新規' ? 'new' : 'existing';
+
+                // 締切チェック
+                let deadlineClass = '';
+                if (d.deadline) {
+                    const dl = new Date(d.deadline);
+                    dl.setHours(0, 0, 0, 0);
+                    if (dl <= today) deadlineClass = 'deadline-warning';
+                }
+
+                return `<tr>
+                    <td>${d.owner}</td>
+                    <td style="font-weight:500;">${d.dealName}</td>
+                    <td><span class="phase-badge ${phaseClass}">${d.phase}</span></td>
+                    <td><span class="type-badge ${typeClass}">${d.type}</span></td>
+                    <td class="text-right">${formatDealCurrency(d.amountMax)}</td>
+                    <td class="text-right">${formatDealCurrency(d.amountMin)}</td>
+                    <td class="text-right">${formatDealPercent(d.probability)}</td>
+                    <td class="text-right">${formatDealCurrency(d.expectedMax)}</td>
+                    <td class="text-right">${formatDealCurrency(d.expectedMin)}</td>
+                    <td style="max-width:200px;white-space:normal;font-size:0.8rem;">${d.taskName}</td>
+                    <td class="${deadlineClass}">${d.deadline}</td>
+                </tr>`;
+            }).join('');
+        }
+
+        function formatDealCurrency(val) {
+            if (!val && val !== 0) return '-';
+            if (typeof val === 'number') return '¥' + val.toLocaleString();
+            const str = String(val).replace(/[¥円,]/g, '');
+            const num = parseInt(str);
+            if (!isNaN(num)) return '¥' + num.toLocaleString();
+            return val;
+        }
+
+        function formatDealPercent(val) {
+            if (!val && val !== 0) return '-';
+            if (typeof val === 'number') return Math.round(val * 100) + '%';
+            if (typeof val === 'string' && val.includes('%')) return val;
+            return val;
+        }
+
+        function formatCurrencyValue(val) {
+            if (!val && val !== 0) return '-';
+            if (typeof val === 'string' && val.includes('円')) return val;
+            if (typeof val === 'number') {
+                return '¥' + val.toLocaleString();
+            }
+            return String(val);
+        }
+
+        function formatPercentValue(val) {
+            if (!val && val !== 0) return '-';
+            if (typeof val === 'number') return (val * 100).toFixed(1) + '%';
+            if (typeof val === 'string' && val.includes('%')) return val;
+            return String(val);
+        }
+
+        function formatCellValue(val, label) {
+            if (val === undefined || val === '') return '-';
+            if (typeof val === 'string') return val;
+            if (label && label.includes('カバー率')) {
+                if (typeof val === 'number') return (val * 100).toFixed(1) + '%';
+                return val;
+            }
+            if (label && label.includes('件数')) {
+                return val;
+            }
+            if (typeof val === 'number') {
+                return '¥' + val.toLocaleString();
+            }
+            return String(val);
         }
 
         // 初期化時にタブを設定

@@ -41,10 +41,12 @@ file:///Users/ebineryota/sales_dashboard_dynamic.html
 
 - **API URL**: `https://script.google.com/macros/s/AKfycbz1ZDCczUFxuSL0mjHq_VTFotjst_vZssGJPIizQ3XALil5ekqq7-SJkjPcqBFyN2V28g/exec`
 - **データソース**: スプレッドシート「月次ビュー」「実績rawdata」シート
+- **パイプラインデータソース**: スプレッドシート `1NXxjF81tvMHywaTzQfmuC_1-FqgOFhoyZIHsUZHIobE`（「案件管理DB」「月別サマリー」シート）
 
 ## 機能構成
 
 ### 概要タブ
+- **売上目標カード**: パイプライン月別サマリーの売上目標を動的参照（月替わりで自動切替）
 - **標準進捗トグル**: 「本日時点」/「前日終了時」で比較基準を切り替え
 - **担当者カード**: 個人別の進捗（プログレスバー）+ 乖離実数表示（±N件）
 - **案件別グラフ**: 架電進捗 vs アポ進捗の比較棒グラフ、ランキング
@@ -55,6 +57,11 @@ file:///Users/ebineryota/sales_dashboard_dynamic.html
 - **日次推移グラフ**:
   - 架電数 / PR数 / アポ数 / 架電toPR率 / PRtoアポ率 / 架電toアポ率 / 架電数/H
   - **前月と比較**: チェック時は歩留まり率4種のみ表示、前月平均を水平線で表示
+
+### パイプラインタブ
+- **月別サマリー**: 粗利乖離・PL件数・PL合計Max・確度加重カバー率・残り乖離のサマリーカード + 全項目テーブル
+- **案件管理DB**: 進行中案件のみ表示（失注・受注除外）、フェーズ進行順（提案済み→提案前）でソート
+- データはパイプラインスプレッドシートからGAS API（`type=pipeline`）経由で取得
 
 ### 設定タブ
 - 案件別の目標値設定
