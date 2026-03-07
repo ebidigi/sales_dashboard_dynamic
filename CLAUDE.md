@@ -1,16 +1,18 @@
 # Sales Dashboard Dynamic
 
-営業KPIダッシュボードプロジェクト。Google Apps Script (GAS) でスプレッドシートのデータを取得し、HTMLダッシュボードで可視化する。
+営業KPIダッシュボード。GAS API経由でTurso DBのデータを取得し、HTMLダッシュボードで可視化する。
+概要・分析タブも案件管理タブも全てTurso DB（performance_rawdata, targets, deals等）がデータソース。
 
 ## プロジェクト構成
 
 ```
 sales_dashboard_dynamic/
-├── index.html          # ダッシュボードUI（Chart.js使用）
-├── deploy.sh           # UI更新スクリプト
+├── index.html          # ダッシュボードHTML構造
+├── style.css           # CSS
+├── app.js              # JavaScript
+├── deploy.sh           # UI更新スクリプト（3ファイルコピー）
 ├── gas/
-│   ├── Code.js         # GAS APIコード（参照用）
-│   └── Code.gs.txt     # GAS APIコード（バックアップ）
+│   └── Code.js         # GAS APIコード（参照用、GASエディタへ手動コピー）
 ```
 
 ## デプロイ方法
@@ -19,7 +21,7 @@ sales_dashboard_dynamic/
 ```bash
 ./deploy.sh
 ```
-これで `index.html` が `/Users/ebineryota/sales_dashboard_dynamic.html` にコピーされる。
+index.html, style.css, app.js を `/Users/ebineryota/` にコピーする。
 
 ### GAS変更時
 1. GASエディタを開く
@@ -32,61 +34,71 @@ sales_dashboard_dynamic/
 file:///Users/ebineryota/sales_dashboard_dynamic.html
 ```
 
-## 主な編集ファイル
+## API URL
 
-- **UI/グラフ変更**: `index.html` を編集 → `./deploy.sh` を実行
-- **API変更**: GASエディタで直接編集・デプロイ（ブラウザで操作）
+- **GAS Web App**: `https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R1p0qvySu0BW8GYKJKCKzHJ4Ny11FtkV/exec`
+- ※「新しいデプロイ」をするとURLが変わるので注意。「デプロイを管理」から既存デプロイを更新すること。
 
-## API情報
+## データソース
 
-- **API URL**: `https://script.google.com/macros/s/AKfycbz1ZDCczUFxuSL0mjHq_VTFotjst_vZssGJPIizQ3XALil5ekqq7-SJkjPcqBFyN2V28g/exec`
-- **データソース**: スプレッドシート「月次ビュー」「実績rawdata」シート
-- **パイプラインデータソース**: スプレッドシート `1NXxjF81tvMHywaTzQfmuC_1-FqgOFhoyZIHsUZHIobE`（「案件管理DB」「月別サマリー」シート）
+### スプレッドシート（月次同期機能でのみ使用）
+- **ID**: `1YjOXBP9cGnMmLpCCO-rRC2tVe25_LZbijaRldl2ZiSM`
+- **シート**: 月次ビュー, 実績rawdata, 目論見入力, マスタ
+- ※ダッシュボードAPI（monthly/rawdata）はTurso経由に移行済み。スプレッドシートはsyncMonthlyView()でのみ使用
+
+### Turso DB（全タブ共通データソース）
+- **URL**: `https://all-staff-rawdata-ebidigi.aws-ap-northeast-1.turso.io`
+- **テーブル**:
+  - `deals` — 案件データ（amount単一カラム、フェーズで受注/パイプライン分類）
+  - `members` — 担当者マスタ
+  - `projects` — 案件（架電）マスタ
+  - `targets` — 月次目標（担当者×案件×月）
+  - `settings` — KV設定（`sales_target_YYYY-MM`で月別売上目標を保存）
+  - `performance_rawdata` — 実績rawdata（架電数、PR数、アポ数等）
+  - `member_name_aliases` — member_nameの揺れを正規化するマッピング
+- **GAS APIタイプ**: `monthly`, `rawdata`, `pipeline_v2`, `deals`, `members`, `projects`, `sales_targets`
+- **GAS POSTタイプ**: `deal_upsert`, `deal_delete`, `sales_targets_save`
 
 ## 機能構成
 
 ### 概要タブ
-- **売上目標カード**: パイプライン月別サマリーの売上目標を動的参照（月替わりで自動切替）
-- **標準進捗トグル**: 「本日時点」/「前日終了時」で比較基準を切り替え
-- **担当者カード**: 個人別の進捗（プログレスバー）+ 乖離実数表示（±N件）
-- **案件別グラフ**: 架電進捗 vs アポ進捗の比較棒グラフ、ランキング
+- 売上目標カード、標準進捗トグル（前日/本日/明日）
+- 担当者カード（進捗バー + 乖離表示）
+- 案件別・個人別グラフ（架電 vs アポ進捗、ランキング）
 
 ### 分析タブ
-- **フィルター**: 案件・担当者・期間で絞り込み
-- **数値KPI**: 架電数、PR数、アポ数、各種歩留まり率
-- **日次推移グラフ**:
-  - 架電数 / PR数 / アポ数 / 架電toPR率 / PRtoアポ率 / 架電toアポ率 / 架電数/H
-  - **前月と比較**: チェック時は歩留まり率4種のみ表示、前月平均を水平線で表示
+- フィルター（案件・担当者・期間）
+- 数値KPI、率指標
+- 日次推移グラフ（前月比較機能付き）
 
-### パイプラインタブ
-- **月別サマリー**: 粗利乖離・PL件数・PL合計Max・確度加重カバー率・残り乖離のサマリーカード + 全項目テーブル
-- **案件管理DB**: 進行中案件のみ表示（失注・受注除外）、フェーズ進行順（提案済み→提案前）でソート
-- データはパイプラインスプレッドシートからGAS API（`type=pipeline`）経由で取得
+### 案件管理タブ
+- **目標対進捗**（上部）: 月別サマリーカード + テーブル（Q単位表示: 3-6月, 7-9月...）
+- **受注案件**（中段）: フェーズ「受注」の案件一覧。金額積み上げが売上実績
+- **パイプライン**（下段）: 未受注案件（提案前/提案済み/見積もり提出済み/保留）。金額×確度=見込
+- 全案件に対して追加・編集・削除フォーム
 
 ### 設定タブ
-- 案件別の目標値設定
+- 月別売上目標の設定（Q単位で表示、settingsテーブルに保存）
 
-## UI特徴
+## 案件フェーズと分類
 
-- **固定サイドバー**: スクロールしても左サイドバーは固定
-- **Notionスタイル**: サイドバーの折りたたみ・展開
-- **キャッシュ機能**: 分析データは5分間キャッシュ
+| フェーズ | 分類 | 表示セクション |
+|---------|------|---------------|
+| 受注 | 売上実績 | 受注案件 |
+| 提案前 / 提案済み / 見積もり提出済み / 保留 | パイプライン | パイプライン |
+| 失注 | 除外 | 非表示 |
 
-## 進捗率の計算ルール
+## deals テーブル主要カラム
 
-- **目標が0件の場合**: 実績が1件以上あれば **100%達成** として表示
-- 目標・実績ともに0件の場合は0%表示
+`id, deal_name, company_name, owner, project_name, phase, deal_type, amount, probability, expected_start_date, next_action, action_deadline, memo`
 
-## 担当者・案件の追加方法
-
-新しい担当者や案件を追加する場合：
-
-1. **「目論見入力」シート**に行を追加（担当者名、案件名、月、目標値など）
-2. **「月次ビュー」シート**の該当行に数式を設定（既存行の数式をコピーして参照先を変更）
-3. 数式が正しく設定されていないと、実績rawdataにデータがあっても集計されない
+- `amount`: 金額（単一、Max/Minなし）
+- `probability`: 確度（0.0〜1.0）
+- `action_deadline`: 次アクション日
 
 ## 注意事項
 
 - UI変更後は `./deploy.sh` を実行
-- ブラウザキャッシュが残る場合は `Cmd+Shift+R` でハードリロード
-- 分析データのキャッシュクリア: コンソールで `localStorage.removeItem('analysisDataCache'); location.reload();`
+- ブラウザキャッシュ: `Cmd+Shift+R` でハードリロード
+- キャッシュクリア: `localStorage.clear(); location.reload();`
+- Turso DBマイグレーション: `/Users/ebineryota/code/all_staff_analysis/turso/` にスクリプトあり
