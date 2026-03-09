@@ -85,8 +85,8 @@
             pipelineData = null;
             pipelineLoaded = false;
             localStorage.removeItem(PIPELINE_CACHE_KEY);
-            // 概要タブに切り替え
-            switchTab('overview');
+            // 現在のタブを維持
+            switchTab(localStorage.getItem('activeTab') || 'overview');
             loadData().finally(() => {
                 btn.disabled = false;
             });
@@ -752,7 +752,8 @@
             });
         }
 
-        function switchTab(tabId) {
+        function switchTab(tabId, skipSave) {
+            if (!skipSave) localStorage.setItem('activeTab', tabId);
             // サイドバーアイテムの状態更新
             document.querySelectorAll('.sidebar-item').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === tabId);
@@ -2020,6 +2021,7 @@
                 localStorage.setItem('gasApiUrl', DEFAULT_API_URL);
             }
             initTabs();
+            switchTab(localStorage.getItem('activeTab') || 'overview');
 
             // デフォルトの日付範囲を設定（今月）
             const today = new Date();
