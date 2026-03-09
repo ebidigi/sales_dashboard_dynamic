@@ -320,6 +320,25 @@
             </div>
         </div>
 
+        <!-- 受注案件詳細モーダル -->
+        <div class="deal-form-modal" id="revenueDetailModal" style="display:none;">
+            <div class="deal-form-content" style="max-width:700px;">
+                <div class="deal-form-header">
+                    <h3 id="revenueDetailTitle">受注案件</h3>
+                    <button class="deal-form-close" onclick="closeRevenueDetail()">&times;</button>
+                </div>
+                <div style="overflow-x:auto;">
+                    <table class="pipeline-table" style="margin:0;">
+                        <thead>
+                            <tr><th>担当者</th><th>案件名</th><th>種別</th><th class="text-right">金額</th><th>開始日</th><th>メモ</th><th></th></tr>
+                        </thead>
+                        <tbody id="revenueDetailBody"></tbody>
+                        <tfoot id="revenueDetailFoot"></tfoot>
+                    </table>
+                </div>
+            </div>
+        </div>
+
         <!-- 案件フォームモーダル -->
         <div class="deal-form-modal" id="dealFormModal" style="display:none;">
             <div class="deal-form-content">

@@ -1557,10 +1557,31 @@
         }
 
         .deal-edit-btn:hover,
-        .deal-delete-btn:hover {
+        .deal-delete-btn:hover,
+        .deal-duplicate-btn:hover {
             opacity: 1;
         }
 
         .deal-delete-btn:hover {
             color: var(--primary-red);
+        }
+
+        .deal-duplicate-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
+            background: none;
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            color: var(--text-secondary);
+            opacity: 0.7;
+            transition: opacity 0.2s, border-color 0.2s;
+            vertical-align: middle;
+        }
+
+        .deal-duplicate-btn:hover {
+            border-color: var(--text-secondary);
         }

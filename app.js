@@ -1511,8 +1511,8 @@
             if (currentQIdx === -1) currentQIdx = 0;
 
             const months = [];
-            // 現在のQと次のQを表示
-            for (let qi = 0; qi < 2; qi++) {
+            // 現在のQのみ表示
+            for (let qi = 0; qi < 1; qi++) {
                 const qIdx = (currentQIdx + qi) % quarters.length;
                 const q = quarters[qIdx];
                 q.forEach(m => {
@@ -1586,12 +1586,12 @@
             const thead = document.getElementById('pipelineSummaryHead');
             const tbody = document.getElementById('pipelineSummaryBody');
 
-            thead.innerHTML = `<tr><th></th>${months.map(m => `<th class="text-right">${m.label}</th>`).join('')}</tr>`;
+            thead.innerHTML = `<tr><th></th>${months.map(m => `<th class="text-right">${m.label}</th>`).join('')}<th class="text-right" style="border-left:2px solid var(--border-color);">合計</th></tr>`;
 
             const rows = [];
             rows.push({ label: '売上目標', values: months.map(m => Number((tgtMap[m.key] || {}).total_sales_target || 0)), format: 'currency' });
             rows.push({ label: '', spacer: true });
-            rows.push({ label: '受注額', values: months.map(m => Number((revMap[m.key] || {}).revenue || 0)), format: 'currency' });
+            rows.push({ label: '受注額', values: months.map(m => Number((revMap[m.key] || {}).revenue || 0)), format: 'currency', clickableMonth: true });
             rows.push({ label: '売上乖離', values: months.map(m => {
                 const tgt = Number((tgtMap[m.key] || {}).total_sales_target || 0);
                 const rev = Number((revMap[m.key] || {}).revenue || 0);
@@ -1615,18 +1615,117 @@
             }), format: 'currency', highlight: true });
 
             tbody.innerHTML = rows.map(row => {
-                if (row.spacer) return `<tr><td colspan="${months.length + 1}" style="height:8px;border:none;"></td></tr>`;
+                if (row.spacer) return `<tr><td colspan="${months.length + 2}" style="height:8px;border:none;"></td></tr>`;
+                const total = row.values.reduce((s, v) => s + v, 0);
+                let totalDisplay = '-';
+                if (row.format === 'currency') totalDisplay = '¥' + total.toLocaleString();
+                else if (row.format === 'percent') {
+                    const tgtSum = months.reduce((s, m) => s + Number((tgtMap[m.key] || {}).total_sales_target || 0), 0);
+                    const wSum = months.reduce((s, m) => s + Number((plMap[m.key] || {}).weighted || 0), 0);
+                    totalDisplay = tgtSum > 0 ? (wSum / tgtSum * 100).toFixed(1) + '%' : '0.0%';
+                }
+                else if (row.format === 'count') totalDisplay = String(total);
                 return `<tr${row.highlight ? ' style="font-weight:600;color:var(--primary-red);"' : ''}>
                     <td style="font-weight:500;">${row.label}</td>
-                    ${row.values.map(v => {
+                    ${row.values.map((v, i) => {
                         let display = '-';
                         if (row.format === 'currency') display = '¥' + v.toLocaleString();
                         else if (row.format === 'percent') display = (v * 100).toFixed(1) + '%';
                         else if (row.format === 'count') display = String(v);
-                        return `<td class="text-right">${display}</td>`;
+                        const clickable = row.clickableMonth && i > 0;
+                        const style = clickable ? 'cursor:pointer;color:var(--primary-blue);text-decoration:underline;' : '';
+                        const onclick = clickable ? ` onclick="showRevenueDetail('${months[i].key}', '${months[i].label}')"` : '';
+                        return `<td class="text-right" style="${style}"${onclick}>${display}</td>`;
                     }).join('')}
+                    <td class="text-right" style="border-left:2px solid var(--border-color);font-weight:600;">${totalDisplay}</td>
                 </tr>`;
             }).join('');
+        }
+
+        // 受注案件詳細ポップアップ
+        function showRevenueDetail(monthKey, monthLabel) {
+            const modal = document.getElementById('revenueDetailModal');
+            const title = document.getElementById('revenueDetailTitle');
+            const tbody = document.getElementById('revenueDetailBody');
+            const tfoot = document.getElementById('revenueDetailFoot');
+
+            title.textContent = `受注案件（${monthLabel}）`;
+
+            const deals = (pipelineData && pipelineData.deals) || [];
+            const wonDeals = deals
+                .filter(d => d.phase === '受注' && (d.expected_start_date || '').startsWith(monthKey))
+                .sort((a, b) => (a.expected_start_date || '').localeCompare(b.expected_start_date || ''));
+
+            if (wonDeals.length === 0) {
+                tbody.innerHTML = '<tr><td colspan="7" style="text-align:center;color:var(--text-light);padding:24px;">受注案件はありません</td></tr>';
+                tfoot.innerHTML = '';
+            } else {
+                const total = wonDeals.reduce((s, d) => s + Number(d.amount || 0), 0);
+                tbody.innerHTML = wonDeals.map(d => {
+                    const amt = Number(d.amount || 0);
+                    return `<tr>
+                        <td>${d.owner || '-'}</td>
+                        <td style="font-weight:500;">${d.deal_name || '-'}</td>
+                        <td><span class="type-badge ${d.deal_type === '新規' ? 'new' : 'existing'}">${d.deal_type || '-'}</span></td>
+                        <td class="text-right">${formatDealCurrency(amt)}</td>
+                        <td>${d.expected_start_date || '-'}</td>
+                        <td style="max-width:200px;white-space:normal;font-size:0.8rem;">${d.memo || '-'}</td>
+                        <td style="white-space:nowrap;">
+                            <button class="deal-edit-btn" onclick="closeRevenueDetail();openDealForm('${d.id}')" title="編集">&#9998;</button>
+                            <button class="deal-duplicate-btn" onclick="closeRevenueDetail();duplicateDealToNextMonth('${d.id}')" title="次月に複製"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 複製</button>
+                        </td>
+                    </tr>`;
+                }).join('');
+                tfoot.innerHTML = `<tr style="font-weight:600;border-top:2px solid var(--border-color);">
+                    <td colspan="3">合計（${wonDeals.length}件）</td>
+                    <td class="text-right">${formatDealCurrency(total)}</td>
+                    <td colspan="3"></td>
+                </tr>`;
+            }
+
+            modal.style.display = 'flex';
+        }
+
+        function closeRevenueDetail() {
+            document.getElementById('revenueDetailModal').style.display = 'none';
+        }
+
+        // 案件を次月に複製（フォームを開いて編集可能）
+        function duplicateDealToNextMonth(dealId) {
+            if (!pipelineData || !pipelineData.deals) return;
+            const deal = pipelineData.deals.find(d => d.id === dealId);
+            if (!deal) return;
+
+            // 次月の日付を計算
+            let nextDate = '';
+            if (deal.expected_start_date) {
+                const parts = deal.expected_start_date.split('-');
+                let y = Number(parts[0]), m = Number(parts[1]), day = parts[2] || '01';
+                m++;
+                if (m > 12) { m = 1; y++; }
+                nextDate = y + '-' + String(m).padStart(2, '0') + '-' + day;
+            }
+
+            // フォームを新規モードで開き、元案件の内容をプリフィル
+            const modal = document.getElementById('dealFormModal');
+            const title = document.getElementById('dealFormTitle');
+            editingDealId = null; // 新規追加として保存
+
+            populateOwnerDropdown();
+
+            title.textContent = '案件を複製（次月）';
+            document.getElementById('dealFormName').value = deal.deal_name || '';
+            document.getElementById('dealFormOwner').value = deal.owner || '';
+            document.getElementById('dealFormPhase').value = deal.phase || '提案前';
+            document.getElementById('dealFormAmount').value = deal.amount || '';
+            document.getElementById('dealFormProbability').value = deal.probability ? Math.round(Number(deal.probability) * 100) : '';
+            document.getElementById('dealFormStartDate').value = nextDate;
+            document.getElementById('dealFormNextAction').value = deal.next_action || '';
+            document.getElementById('dealFormDeadline').value = '';
+            document.getElementById('dealFormMemo').value = deal.memo || '';
+
+            toggleDealFormFields();
+            modal.style.display = 'flex';
         }
 
         // 受注案件テーブル（当月のみ表示）
@@ -1647,8 +1746,9 @@
                     <td class="text-right">${formatDealCurrency(amt)}</td>
                     <td>${d.expected_start_date || '-'}</td>
                     <td style="max-width:200px;white-space:normal;font-size:0.8rem;">${d.memo || '-'}</td>
-                    <td>
+                    <td style="white-space:nowrap;">
                         <button class="deal-edit-btn" onclick="openDealForm('${d.id}')" title="編集">&#9998;</button>
+                        <button class="deal-duplicate-btn" onclick="duplicateDealToNextMonth('${d.id}')" title="次月に複製"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 複製</button>
                     </td>
                 </tr>`;
             }).join('');
@@ -1697,8 +1797,9 @@
                     <td>${d.expected_start_date || '-'}</td>
                     <td style="max-width:200px;white-space:normal;font-size:0.8rem;">${d.next_action || '-'}</td>
                     <td class="${deadlineClass}">${d.action_deadline || '-'}</td>
-                    <td>
+                    <td style="white-space:nowrap;">
                         <button class="deal-edit-btn" onclick="openDealForm('${d.id}')" title="編集">&#9998;</button>
+                        <button class="deal-duplicate-btn" onclick="duplicateDealToNextMonth('${d.id}')" title="次月に複製"><svg width="14" height="14" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round"><rect x="9" y="9" width="13" height="13" rx="2"/><path d="M5 15H4a2 2 0 0 1-2-2V4a2 2 0 0 1 2-2h9a2 2 0 0 1 2 2v1"/></svg> 複製</button>
                         <button class="deal-delete-btn" onclick="deleteDealConfirm('${d.id}', '${(d.deal_name || '').replace(/'/g, "\\'")}')" title="削除">&#128465;</button>
                     </td>
                 </tr>`;
