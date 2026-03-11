@@ -31,6 +31,11 @@ function doGet(e) {
       case 'deal_delete':
         data = deleteDeal(e.parameter.id);
         break;
+      case 'debug_holidays':
+        var dy = Number(e.parameter.year || new Date().getFullYear());
+        var dm = Number(e.parameter.month || (new Date().getMonth() + 1));
+        data = calculateBusinessDays_(dy, dm);
+        break;
       default:
         data = getMonthlyViewData();
     }
@@ -125,13 +130,21 @@ function calculateBusinessDays_(year, month) {
   var monthStart = new Date(year, month - 1, 1);
   var monthEnd = new Date(year, month, 0); // 月末日
 
-  // 日本の祝日カレンダーから祝日を取得
+  // 日本の祝日カレンダーから国民の祝日のみ取得（ひな祭り等の年中行事を除外）
+  var NATIONAL_HOLIDAYS = [
+    '元日', '成人の日', '建国記念の日', '天皇誕生日', '春分の日',
+    '昭和の日', '憲法記念日', 'みどりの日', 'こどもの日', '海の日',
+    '山の日', '敬老の日', '秋分の日', 'スポーツの日', '文化の日',
+    '勤労感謝の日', '振替休日', '国民の休日'
+  ];
   var holidays = {};
   try {
     var cal = CalendarApp.getCalendarById('ja.japanese#holiday@group.v.calendar.google.com');
     if (cal) {
       var events = cal.getEvents(monthStart, new Date(year, month, 1)); // 翌月1日まで
       events.forEach(function(ev) {
+        var title = ev.getTitle();
+        if (NATIONAL_HOLIDAYS.indexOf(title) === -1) return; // 国民の祝日以外はスキップ
         var d = ev.getStartTime();
         var key = Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd');
         holidays[key] = true;
@@ -168,7 +181,8 @@ function calculateBusinessDays_(year, month) {
   return {
     totalDays: totalDays,
     elapsedDays: elapsedDays,
-    standardProgress: standardProgress
+    standardProgress: standardProgress,
+    holidays: Object.keys(holidays)
   };
 }
 
@@ -177,7 +191,7 @@ function calculateBusinessDays_(year, month) {
  */
 function getBusinessDaysCached_(year, month) {
   var cache = CacheService.getScriptCache();
-  var cacheKey = 'bizdays_' + year + '_' + month;
+  var cacheKey = 'bizdays_v2_' + year + '_' + month;
   var cached = cache.get(cacheKey);
 
   if (cached) {
@@ -200,7 +214,7 @@ function getBusinessDaysCached_(year, month) {
 function getMonthlyViewData() {
   // キャッシュチェック（2分間）
   var cache = CacheService.getScriptCache();
-  var cached = cache.get('monthlyViewData');
+  var cached = cache.get('monthlyViewData_v2');
   if (cached) {
     return JSON.parse(cached);
   }
@@ -350,7 +364,7 @@ function getMonthlyViewData() {
   };
 
   // 2分間キャッシュ
-  cache.put('monthlyViewData', JSON.stringify(response), 120);
+  cache.put('monthlyViewData_v2', JSON.stringify(response), 120);
 
   return response;
 }
@@ -1084,4 +1098,109 @@ function testTursoConnection() {
 function testGetPipelineDataV2() {
   var result = getPipelineDataV2();
   Logger.log(JSON.stringify(result, null, 2));
+}
+
+// ========================================
+// Slack パイプライン期限リマインド通知
+// ========================================
+
+// Slack Webhook URLはGAS ScriptPropertiesに SLACK_WEBHOOK_URL として設定すること
+function getSlackWebhookUrl_() {
+  return PropertiesService.getScriptProperties().getProperty('SLACK_WEBHOOK_URL');
+}
+
+/**
+ * 毎朝8時にトリガーで実行。action_deadlineが本日 or 超過の案件をSlack通知。
+ * GASエディタ → トリガー → sendPipelineReminder → 日付ベース → 午前8時〜9時
+ */
+function sendPipelineReminder() {
+  var todayStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
+  var dayOfWeek = new Date().getDay();
+  // 土日はスキップ
+  if (dayOfWeek === 0 || dayOfWeek === 6) return;
+
+  var result = tursoQuery(
+    "SELECT id, deal_name, company_name, owner, phase, deal_type, amount, probability, expected_start_date, next_action, action_deadline, memo FROM deals WHERE phase NOT IN ('受注','失注') AND action_deadline IS NOT NULL AND action_deadline != '' AND action_deadline <= ? ORDER BY action_deadline ASC",
+    [todayStr]
+  );
+
+  var deals = result.rows;
+  if (deals.length === 0) return; // 通知対象なし
+
+  var overdue = [];
+  var today = [];
+
+  deals.forEach(function(d) {
+    if (d.action_deadline === todayStr) {
+      today.push(d);
+    } else if (d.action_deadline < todayStr) {
+      overdue.push(d);
+    }
+  });
+
+  if (overdue.length === 0 && today.length === 0) return;
+
+  // 曜日名
+  var dayNames = ['日', '月', '火', '水', '木', '金', '土'];
+  var todayDay = dayNames[new Date().getDay()];
+
+  var lines = [];
+  lines.push('🔔 *次アクション期限リマインド*　' + todayStr.replace(/-/g, '/') + '（' + todayDay + '）');
+  lines.push('');
+
+  if (overdue.length > 0) {
+    lines.push('──────────────────────');
+    lines.push('🔴 *期限超過（' + overdue.length + '件）*');
+    lines.push('──────────────────────');
+    lines.push('');
+    overdue.forEach(function(d) {
+      var diffDays = Math.floor((new Date(todayStr) - new Date(d.action_deadline)) / 86400000);
+      var dlDate = d.action_deadline.substring(5).replace('-', '/');
+      var dlDow = dayNames[new Date(d.action_deadline + 'T00:00:00+09:00').getDay()];
+      var amt = formatYen_(d.amount);
+      lines.push('*' + d.deal_name + '*　⚠️ `' + diffDays + '日超過`');
+      lines.push('┣ 👤 *' + (d.owner || '-') + '*　┃　' + (d.phase || '-') + '　┃　💰 *' + amt + '*');
+      lines.push('┗ 📌 ' + (d.next_action || '-'));
+      lines.push('');
+    });
+  }
+
+  if (today.length > 0) {
+    lines.push('──────────────────────');
+    lines.push('🟡 *本日期限（' + today.length + '件）*');
+    lines.push('──────────────────────');
+    lines.push('');
+    today.forEach(function(d) {
+      var amt = formatYen_(d.amount);
+      lines.push('*' + d.deal_name + '*　📅 `本日`');
+      lines.push('┣ 👤 *' + (d.owner || '-') + '*　┃　' + (d.phase || '-') + '　┃　💰 *' + amt + '*');
+      lines.push('┗ 📌 ' + (d.next_action || '-'));
+      lines.push('');
+    });
+  }
+
+  lines.push('──────────────────────');
+  lines.push('📎 <https://ebidigi.github.io/sales_dashboard_dynamic/?tab=pipeline|ダッシュボードで確認・編集する>');
+
+  var payload = { text: lines.join('\n') };
+  var webhookUrl = getSlackWebhookUrl_();
+  if (!webhookUrl) { Logger.log('SLACK_WEBHOOK_URL not set'); return; }
+  var res = UrlFetchApp.fetch(webhookUrl, {
+    method: 'post',
+    contentType: 'application/json',
+    payload: JSON.stringify(payload),
+    muteHttpExceptions: true
+  });
+  Logger.log('Slack response: ' + res.getResponseCode() + ' ' + res.getContentText());
+}
+
+function formatYen_(amount) {
+  var n = Number(amount || 0);
+  var s = String(n);
+  var result = '';
+  for (var i = s.length - 1, c = 0; i >= 0; i--, c++) {
+    if (c > 0 && c % 3 === 0) result = ',' + result;
+    result = s[i] + result;
+  }
+  return '¥' + result;
 }

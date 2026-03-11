@@ -2021,7 +2021,8 @@
                 localStorage.setItem('gasApiUrl', DEFAULT_API_URL);
             }
             initTabs();
-            switchTab(localStorage.getItem('activeTab') || 'overview');
+            const urlTab = new URLSearchParams(window.location.search).get('tab');
+            switchTab(urlTab || localStorage.getItem('activeTab') || 'overview');
 
             // デフォルトの日付範囲を設定（今月）
             const today = new Date();
