@@ -11,7 +11,7 @@ function doGet(e) {
 
     switch (type) {
       case 'monthly':
-        data = getMonthlyViewData();
+        data = getMonthlyViewData(e.parameter.month);
         break;
       case 'rawdata':
         data = getRawData(e.parameter);
@@ -22,15 +22,7 @@ function doGet(e) {
       case 'sales_targets':
         data = getSalesTargetSettings();
         break;
-      case 'sales_targets_save':
-        data = saveSalesTargetSettings(JSON.parse(e.parameter.data || '{}'));
-        break;
-      case 'deal_upsert':
-        data = upsertDeal(JSON.parse(e.parameter.data || '{}'));
-        break;
-      case 'deal_delete':
-        data = deleteDeal(e.parameter.id);
-        break;
+      // 書き込み操作はdoPostのみ許可（GETでは読み取り専用）
       case 'debug_holidays':
         var dy = Number(e.parameter.year || new Date().getFullYear());
         var dm = Number(e.parameter.month || (new Date().getMonth() + 1));
@@ -187,7 +179,8 @@ function calculateBusinessDays_(year, month) {
 }
 
 /**
- * 稼働日数をキャッシュ付きで取得（24時間キャッシュ）
+ * 稼働日数をキャッシュ付きで取得
+ * 当月は1時間、過去月は最大6時間（CacheService上限）キャッシュ
  */
 function getBusinessDaysCached_(year, month) {
   var cache = CacheService.getScriptCache();
@@ -199,7 +192,11 @@ function getBusinessDaysCached_(year, month) {
   }
 
   var result = calculateBusinessDays_(year, month);
-  cache.put(cacheKey, JSON.stringify(result), 86400); // 24時間
+  var now = new Date();
+  var currentYM = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy') + '-' + Utilities.formatDate(now, 'Asia/Tokyo', 'MM');
+  var isCurrentMonth = (year + '-' + String(month).padStart(2, '0')) === currentYM;
+  var ttl = isCurrentMonth ? 3600 : 21600; // 当月1時間、過去月6時間
+  cache.put(cacheKey, JSON.stringify(result), ttl);
   return result;
 }
 
@@ -211,18 +208,28 @@ function getBusinessDaysCached_(year, month) {
  * 月次ビューのデータを取得（Turso DB から）
  * レスポンス構造は旧スプレッドシート版と完全互換
  */
-function getMonthlyViewData() {
+function getMonthlyViewData(targetMonth) {
+  // targetMonth: 'yyyy-MM' 形式（省略時は当月）
+  var now = new Date();
+  var year, month, currentMonth;
+  if (targetMonth && /^\d{4}-(0[1-9]|1[0-2])$/.test(targetMonth)) {
+    var parts = targetMonth.split('-');
+    year = parseInt(parts[0]);
+    month = parseInt(parts[1]);
+    currentMonth = targetMonth;
+  } else {
+    year = parseInt(Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy'));
+    month = parseInt(Utilities.formatDate(now, 'Asia/Tokyo', 'MM'));
+    currentMonth = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM');
+  }
+
   // キャッシュチェック（2分間）
   var cache = CacheService.getScriptCache();
-  var cached = cache.get('monthlyViewData_v2');
+  var cacheKey = 'monthlyViewData_v2_' + currentMonth;
+  var cached = cache.get(cacheKey);
   if (cached) {
     return JSON.parse(cached);
   }
-
-  var now = new Date();
-  var year = parseInt(Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy'));
-  var month = parseInt(Utilities.formatDate(now, 'Asia/Tokyo', 'MM'));
-  var currentMonth = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM');
   var monthStartDate = currentMonth + '-01';
   var nextMonthStart = year + '-' + String(month < 12 ? month + 1 : 1).padStart(2, '0') + '-01';
   if (month === 12) {
@@ -347,6 +354,7 @@ function getMonthlyViewData() {
       standardProgress: bizDays.standardProgress,
       elapsedDays: bizDays.elapsedDays,
       totalDays: bizDays.totalDays,
+      targetMonth: currentMonth,
       backTarget: 0
     },
     summary: {
@@ -364,7 +372,7 @@ function getMonthlyViewData() {
   };
 
   // 2分間キャッシュ
-  cache.put('monthlyViewData_v2', JSON.stringify(response), 120);
+  cache.put(cacheKey, JSON.stringify(response), 120);
 
   return response;
 }
@@ -383,13 +391,14 @@ function getRawData(params) {
   var year = parseInt(Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy'));
   var month = parseInt(Utilities.formatDate(now, 'Asia/Tokyo', 'MM'));
 
+  var datePattern = /^\d{4}-(0[1-9]|1[0-2])-(0[1-9]|[12]\d|3[01])$/;
   var startDate, endDate;
-  if (params && params.startDate) {
-    startDate = params.startDate; // 'yyyy-MM-dd'
+  if (params && params.startDate && datePattern.test(params.startDate)) {
+    startDate = params.startDate;
   } else {
     startDate = year + '-' + String(month).padStart(2, '0') + '-01';
   }
-  if (params && params.endDate) {
+  if (params && params.endDate && datePattern.test(params.endDate)) {
     endDate = params.endDate;
   } else {
     var lastDay = new Date(year, month, 0).getDate();
@@ -1114,10 +1123,11 @@ function getSlackWebhookUrl_() {
  * GASエディタ → トリガー → sendPipelineReminder → 日付ベース → 午前8時〜9時
  */
 function sendPipelineReminder() {
-  var todayStr = Utilities.formatDate(new Date(), 'Asia/Tokyo', 'yyyy-MM-dd');
-  var dayOfWeek = new Date().getDay();
-  // 土日はスキップ
-  if (dayOfWeek === 0 || dayOfWeek === 6) return;
+  var now = new Date();
+  var todayStr = Utilities.formatDate(now, 'Asia/Tokyo', 'yyyy-MM-dd');
+  var dayOfWeek = Number(Utilities.formatDate(now, 'Asia/Tokyo', 'u')); // 1=月〜7=日
+  // 土日はスキップ（6=土, 7=日）
+  if (dayOfWeek === 6 || dayOfWeek === 7) return;
 
   var result = tursoQuery(
     "SELECT id, deal_name, company_name, owner, phase, deal_type, amount, probability, expected_start_date, next_action, action_deadline, memo FROM deals WHERE phase NOT IN ('受注','失注') AND action_deadline IS NOT NULL AND action_deadline != '' AND action_deadline <= ? ORDER BY action_deadline ASC",
@@ -1140,9 +1150,10 @@ function sendPipelineReminder() {
 
   if (overdue.length === 0 && today.length === 0) return;
 
-  // 曜日名
+  // 曜日名（u: 1=月〜7=日）
+  var dayNamesU = { 1: '月', 2: '火', 3: '水', 4: '木', 5: '金', 6: '土', 7: '日' };
   var dayNames = ['日', '月', '火', '水', '木', '金', '土'];
-  var todayDay = dayNames[new Date().getDay()];
+  var todayDay = dayNamesU[dayOfWeek];
 
   var lines = [];
   lines.push('🔔 *次アクション期限リマインド*　' + todayStr.replace(/-/g, '/') + '（' + todayDay + '）');
@@ -1196,11 +1207,13 @@ function sendPipelineReminder() {
 
 function formatYen_(amount) {
   var n = Number(amount || 0);
-  var s = String(n);
+  var prefix = n < 0 ? '-¥' : '¥';
+  var abs = Math.abs(n);
+  var s = String(abs);
   var result = '';
   for (var i = s.length - 1, c = 0; i >= 0; i--, c++) {
     if (c > 0 && c % 3 === 0) result = ',' + result;
     result = s[i] + result;
   }
-  return '¥' + result;
+  return prefix + result;
 }

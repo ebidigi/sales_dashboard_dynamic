@@ -57,10 +57,45 @@
 
         const DEFAULT_API_URL = 'https://script.google.com/macros/s/AKfycbwG_1cvgfnnNuK9PuhmXJOSeBuS8kFzJbf-R1p0qvySu0BW8GYKJKCKzHJ4Ny11FtkV/exec';
 
+        // 概要タブの表示月管理
+        let overviewMonth = null; // null = 当月
+
+        function initOverviewMonth() {
+            const now = new Date();
+            overviewMonth = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            updateMonthDisplay();
+        }
+
+        function updateMonthDisplay() {
+            const [y, m] = overviewMonth.split('-');
+            document.getElementById('monthDisplay').textContent = `${y}年${parseInt(m)}月`;
+            // 未来月は無効化
+            const now = new Date();
+            const currentYM = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            document.getElementById('monthNext').disabled = overviewMonth >= currentYM;
+            document.getElementById('monthNext').style.opacity = overviewMonth >= currentYM ? '0.3' : '1';
+        }
+
+        function changeOverviewMonth(delta) {
+            const [y, m] = overviewMonth.split('-').map(Number);
+            let newM = m + delta;
+            let newY = y;
+            if (newM > 12) { newM = 1; newY++; }
+            if (newM < 1) { newM = 12; newY--; }
+            const now = new Date();
+            const currentYM = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            const newYM = newY + '-' + String(newM).padStart(2, '0');
+            if (newYM > currentYM) return;
+            overviewMonth = newYM;
+            updateMonthDisplay();
+            loadData();
+        }
+
         // 既存のDOMContentLoadedイベントは下で統合
 
         async function loadData() {
-            const url = localStorage.getItem('gasApiUrl');
+            const baseUrl = localStorage.getItem('gasApiUrl') || DEFAULT_API_URL;
+            const url = overviewMonth ? `${baseUrl}?type=monthly&month=${overviewMonth}` : baseUrl;
             showLoading();
             try {
                 const response = await fetch(url);
@@ -103,7 +138,7 @@
             const totalDays = parseInt(metadata.totalDays) || 1;
 
             // 前日終了時点の標準進捗を計算
-            yesterdayProgress = Math.max(0, parseFloat((Math.floor(elapsedDays - 1) / totalDays * 100).toFixed(2)));
+            yesterdayProgress = Math.max(0, parseFloat(((elapsedDays - 1) / totalDays * 100).toFixed(2)));
 
             // 明日時点の標準進捗を計算（100%を超えない）
             tomorrowProgress = Math.min(100, parseFloat(((elapsedDays + 1) / totalDays * 100).toFixed(2)));
@@ -112,8 +147,13 @@
             const standardProgress = currentProgressMode === 'today' ? todayProgress :
                                      currentProgressMode === 'yesterday' ? yesterdayProgress : tomorrowProgress;
 
-            document.getElementById('dateInfo').textContent =
-                `経過 ${metadata.elapsedDays}日 / 全${metadata.totalDays}稼働日`;
+            const targetMonth = metadata.targetMonth || overviewMonth || '';
+            const now = new Date();
+            const currentYM = now.getFullYear() + '-' + String(now.getMonth() + 1).padStart(2, '0');
+            const isCurrentMonth = targetMonth === currentYM;
+            document.getElementById('dateInfo').textContent = isCurrentMonth
+                ? `経過 ${metadata.elapsedDays}日 / 全${metadata.totalDays}稼働日`
+                : `全${metadata.totalDays}稼働日`;
             document.getElementById('progressBadge').textContent =
                 `標準進捗: ${standardProgress}%`;
 
@@ -752,8 +792,8 @@
             });
         }
 
-        function switchTab(tabId, skipSave) {
-            if (!skipSave) localStorage.setItem('activeTab', tabId);
+        function switchTab(tabId) {
+            localStorage.setItem('activeTab', tabId);
             // サイドバーアイテムの状態更新
             document.querySelectorAll('.sidebar-item').forEach(btn => {
                 btn.classList.toggle('active', btn.dataset.tab === tabId);
@@ -864,8 +904,6 @@
             try {
                 const response = await fetch(apiUrl);
                 analysisData = await response.json();
-                console.log('Analysis data loaded from API:', analysisData);
-                console.log('previousMonthDaily:', analysisData.previousMonthDaily);
                 if (analysisData.error) throw new Error(analysisData.error);
                 setAnalysisCache(cacheKey, analysisData);
                 renderAnalysisPage();
@@ -1870,13 +1908,14 @@
             const existing = select.querySelectorAll('option:not(:first-child)');
             existing.forEach(o => o.remove());
 
-            // pipelineDataのdealsからユニークな担当者を取得
+            // pipelineDataのdealsとcurrentDataのmembersからユニークな担当者を取得
             const owners = new Set();
             if (pipelineData && pipelineData.deals) {
                 pipelineData.deals.forEach(d => { if (d.owner) owners.add(d.owner); });
             }
-            // ハードコードのフォールバック
-            ['小甲陽平', '海老根', '中村凌'].forEach(n => owners.add(n));
+            if (currentData && currentData.members) {
+                currentData.members.forEach(m => { if (m.name) owners.add(m.name); });
+            }
 
             Array.from(owners).sort().forEach(name => {
                 const opt = document.createElement('option');
@@ -2021,6 +2060,7 @@
                 localStorage.setItem('gasApiUrl', DEFAULT_API_URL);
             }
             initTabs();
+            initOverviewMonth();
             const urlTab = new URLSearchParams(window.location.search).get('tab');
             switchTab(urlTab || localStorage.getItem('activeTab') || 'overview');
 

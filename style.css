@@ -1585,3 +1585,33 @@
         .deal-duplicate-btn:hover {
             border-color: var(--text-secondary);
         }
+
+        .month-selector {
+            display: inline-flex;
+            align-items: center;
+            gap: 6px;
+            margin-left: 4px;
+        }
+
+        .month-nav-btn {
+            background: var(--bg-light);
+            border: 1px solid var(--border-color);
+            border-radius: 4px;
+            cursor: pointer;
+            padding: 2px 8px;
+            font-size: 0.75rem;
+            color: var(--text-light);
+            transition: background 0.2s;
+        }
+
+        .month-nav-btn:hover {
+            background: var(--border-color);
+        }
+
+        .month-display {
+            font-size: 0.85rem;
+            font-weight: 600;
+            color: var(--text-dark);
+            min-width: 80px;
+            text-align: center;
+        }

@@ -81,7 +81,14 @@
                 <div class="page-title-row">
                     <div class="page-title">
                         <h1>稼働報酬チーム営業KPI確認シート<span class="progress-badge" id="progressBadge">標準進捗: --%</span></h1>
-                        <p class="subtitle" id="dateInfo">月次ビュー</p>
+                        <div style="display:flex;align-items:center;gap:8px;">
+                            <p class="subtitle" id="dateInfo">月次ビュー</p>
+                            <div class="month-selector" id="monthSelector">
+                                <button class="month-nav-btn" id="monthPrev" onclick="changeOverviewMonth(-1)">&#9664;</button>
+                                <span class="month-display" id="monthDisplay"></span>
+                                <button class="month-nav-btn" id="monthNext" onclick="changeOverviewMonth(1)">&#9654;</button>
+                            </div>
+                        </div>
                     </div>
                     <div class="progress-toggle-section" id="progressToggleSection" style="display: none;">
                         <span class="toggle-label">比較基準:</span>
