@@ -16,13 +16,6 @@ function doGet(e) {
       case 'rawdata':
         data = getRawData(e.parameter);
         break;
-      case 'pipeline_v2':
-        data = getPipelineDataV2();
-        break;
-      case 'sales_targets':
-        data = getSalesTargetSettings();
-        break;
-      // 書き込み操作はdoPostのみ許可（GETでは読み取り専用）
       case 'debug_holidays':
         var dy = Number(e.parameter.year || new Date().getFullYear());
         var dm = Number(e.parameter.month || (new Date().getMonth() + 1));
@@ -48,36 +41,8 @@ function doPost(e) {
     const requestBody = JSON.parse(e.postData.contents);
     const type = requestBody.type;
 
-    if (type === 'deal_upsert') {
-      const result = upsertDeal(requestBody.data);
-      return ContentService
-        .createTextOutput(JSON.stringify(result))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (type === 'deal_delete') {
-      const result = deleteDeal(requestBody.id);
-      return ContentService
-        .createTextOutput(JSON.stringify(result))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (type === 'sales_targets_save') {
-      const result = saveSalesTargetSettings(requestBody.data);
-      return ContentService
-        .createTextOutput(JSON.stringify(result))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
-    if (type === 'target_upsert') {
-      const result = upsertTarget(requestBody.data);
-      return ContentService
-        .createTextOutput(JSON.stringify(result))
-        .setMimeType(ContentService.MimeType.JSON);
-    }
-
     return ContentService
-      .createTextOutput(JSON.stringify({ error: 'Unknown type' }))
+      .createTextOutput(JSON.stringify({ error: 'Unknown type: ' + type }))
       .setMimeType(ContentService.MimeType.JSON);
   } catch (error) {
     return ContentService
@@ -86,8 +51,9 @@ function doPost(e) {
   }
 }
 
-// スプレッドシートID（月次同期機能で引き続き使用）
-const SPREADSHEET_ID = '1YjOXBP9cGnMmLpCCO-rRC2tVe25_LZbijaRldl2ZiSM';
+// スプレッドシートID
+const SPREADSHEET_ID = '1kOAmuUSpY_2rV2EpIbhRtBsoxeehGuz9GYLTFn0xpdQ';
+const OLD_SPREADSHEET_ID = '1YjOXBP9cGnMmLpCCO-rRC2tVe25_LZbijaRldl2ZiSM';
 
 // ========================================
 // ヘルパー関数
@@ -236,34 +202,20 @@ function getMonthlyViewData(targetMonth) {
     nextMonthStart = (year + 1) + '-01-01';
   }
 
-  // 3クエリを1回のHTTPリクエストで並列実行
-  var results = tursoExecute_([
-    // (A) 当月の目標取得
-    {
-      sql: "SELECT member_name, project_name, target_calls, target_appointments, target_work_hours, calls_per_hour_target, call_to_appo_target, sales_target FROM targets WHERE target_month = ?",
-      args: [{ type: 'text', value: currentMonth }]
-    },
-    // (B) 当月の実績集計（member_name_aliasesでJOIN、正規化名でGROUP BY）
+  // (A) 担当者別目標をスプレッドシート「目論見入力」から取得
+  var targets = getTargetsFromSheet_(month);
+
+  // (B) 実績データはTursoから取得（performance_rawdata）
+  var tursoResults = tursoExecute_([
     {
       sql: "SELECT COALESCE(a.member_name, REPLACE(SUBSTR(p.member_name, 1, CASE WHEN INSTR(p.member_name, '/') > 0 THEN INSTR(p.member_name, '/') - 1 ELSE LENGTH(p.member_name) END), '@', '')) AS name, p.project_name, SUM(p.call_count) AS calls, SUM(p.pr_count) AS pr, SUM(p.appointment_count) AS appo, SUM(p.call_hours) AS call_hours FROM performance_rawdata p LEFT JOIN member_name_aliases a ON p.member_name = a.raw_name WHERE p.input_date >= ? AND p.input_date < ? GROUP BY name, p.project_name",
       args: [{ type: 'text', value: monthStartDate }, { type: 'text', value: nextMonthStart }]
-    },
-    // (C) 当月の受注売上合計
-    {
-      sql: "SELECT COALESCE(SUM(CAST(amount AS REAL)), 0) AS revenue FROM deals WHERE phase = '受注' AND strftime('%Y-%m', expected_start_date) = ?",
-      args: [{ type: 'text', value: currentMonth }]
-    },
-    // (D) 当月の売上目標（settingsテーブルから）
-    {
-      sql: "SELECT value FROM settings WHERE key = ?",
-      args: [{ type: 'text', value: 'sales_target_' + currentMonth }]
     }
   ]);
+  var actuals = parseResultRows_(tursoResults[0]);
 
-  var targets = parseResultRows_(results[0]);
-  var actuals = parseResultRows_(results[1]);
-  var revenueRow = parseResultRows_(results[2]);
-  var salesTargetRows = parseResultRows_(results[3]);
+  // (C)(D) 売上目標・確定をスプレッドシート「稼働報酬Team」から取得
+  var salesData = getTeamSalesFromSheet_(month);
 
   // 稼働日数計算
   var bizDays = getBusinessDaysCached_(year, month);
@@ -344,8 +296,8 @@ function getMonthlyViewData(targetMonth) {
     sumTargetAppointments += tAppo;
   });
 
-  var totalSalesFromDeals = Number(revenueRow[0].revenue) || 0;
-  var salesTarget = salesTargetRows.length > 0 ? Number(salesTargetRows[0].value) || 0 : 0;
+  var totalSalesFromDeals = salesData.confirmedSales;
+  var salesTarget = salesData.salesTarget;
 
   var response = {
     metadata: {
@@ -381,9 +333,91 @@ function getMonthlyViewData(targetMonth) {
 // 実績rawdataからの集計（Turso版）
 // ========================================
 
+// ========================================
+// スプレッドシート読み取りヘルパー
+// ========================================
+
+/**
+ * 「稼働報酬Team」シートから売上目標・確定金額を取得
+ * @param {number} monthNum - 月（1-12）
+ */
+function getTeamSalesFromSheet_(monthNum) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('稼働報酬Team');
+
+  // 行3ヘッダーから月→列のマッピング（D列=4から）
+  var headers = sheet.getRange('D3:H3').getValues()[0]; // ["3月","4月","5月","6月","合計"]
+  var colIndex = -1;
+  for (var i = 0; i < headers.length; i++) {
+    if (String(headers[i]).replace('月', '') == String(monthNum)) {
+      colIndex = i + 4; // D=4, E=5, F=6, G=7
+      break;
+    }
+  }
+
+  if (colIndex < 0) return { salesTarget: 0, confirmedSales: 0 };
+
+  var salesTarget = parseCurrency_(sheet.getRange(4, colIndex).getValue());
+  var confirmedSales = parseCurrency_(sheet.getRange(24, colIndex).getValue());
+
+  return { salesTarget: salesTarget, confirmedSales: confirmedSales };
+}
+
+/**
+ * 「目論見入力」シートから担当者別目標を取得
+ * @param {number} monthNum - 月（1-12）
+ * @returns {Array} targets配列（Turso版と同じ構造）
+ */
+function getTargetsFromSheet_(monthNum) {
+  var ss = SpreadsheetApp.openById(SPREADSHEET_ID);
+  var sheet = ss.getSheetByName('稼働報酬_目論見入力');
+  var data = sheet.getDataRange().getValues();
+  var targets = [];
+
+  for (var i = 1; i < data.length; i++) {
+    var row = data[i];
+    var rowMonth = parseInt(row[2]);
+    if (rowMonth !== monthNum) continue;
+
+    // 担当者名を正規化（@名前/英語 → 名前 部分を抽出）
+    var rawName = String(row[0]);
+    var memberName = rawName.replace(/^@/, '').replace(/\s*\/.*$/, '').replace(/\s+/g, '');
+
+    targets.push({
+      member_name: memberName,
+      project_name: String(row[1]),
+      target_calls: Number(row[3]) || 0,
+      target_appointments: Number(row[5]) || 0,
+      target_work_hours: Number(row[8]) || 0,
+      calls_per_hour_target: Number(row[6]) || 0,
+      call_to_appo_target: parsePercent_(row[7]),
+      sales_target: parseCurrency_(row[10])
+    });
+  }
+
+  return targets;
+}
+
+/**
+ * 通貨文字列をパース（¥12,340,000 → 12340000）
+ */
+function parseCurrency_(val) {
+  if (typeof val === 'number') return val;
+  return Number(String(val).replace(/[¥￥,]/g, '')) || 0;
+}
+
+/**
+ * パーセント文字列をパース（"6.00%" → 0.06）
+ */
+function parsePercent_(val) {
+  if (typeof val === 'number') return val;
+  var s = String(val).replace('%', '');
+  var n = Number(s);
+  return isNaN(n) ? 0 : n / 100;
+}
+
 /**
  * 実績rawdataを取得・集計（Turso DB から）
- * レスポンス構造は旧スプレッドシート版と完全互換
  */
 function getRawData(params) {
   // 日付範囲を決定
@@ -927,186 +961,9 @@ function tursoQuery(sql, args) {
 /**
  * パイプラインデータをTursoから取得（v2）
  */
-function getPipelineDataV2() {
-  // deals取得
-  var dealsResult = tursoQuery(
-    "SELECT * FROM deals WHERE phase NOT IN ('失注') ORDER BY CASE phase WHEN '提案済み' THEN 0 WHEN '見積もり提出済み' THEN 1 WHEN '提案前' THEN 2 WHEN '受注' THEN 3 WHEN '保留' THEN 4 ELSE 5 END, expected_start_date"
-  );
-
-  // 月別パイプライン集計（未受注）
-  var pipelineResult = tursoQuery(
-    "SELECT strftime('%Y-%m', expected_start_date) AS month, " +
-    "COUNT(*) AS pl_count, " +
-    "SUM(amount) AS pl_total, " +
-    "SUM(CAST(amount AS REAL) * probability) AS weighted " +
-    "FROM deals WHERE phase IN ('提案前', '提案済み', '見積もり提出済み') " +
-    "GROUP BY month ORDER BY month"
-  );
-
-  // 月別売上（受注済み）
-  var revenueResult = tursoQuery(
-    "SELECT strftime('%Y-%m', expected_start_date) AS month, " +
-    "SUM(amount) AS revenue " +
-    "FROM deals WHERE phase = '受注' GROUP BY month ORDER BY month"
-  );
-
-  // 売上目標（settingsテーブルから）
-  var targetsResult = tursoQuery(
-    "SELECT key, value FROM settings WHERE key LIKE 'sales_target_%' ORDER BY key"
-  );
-  var salesTargets = (targetsResult.rows || []).map(function(r) {
-    return {
-      target_month: r.key.replace('sales_target_', ''),
-      total_sales_target: Number(r.value || 0)
-    };
-  });
-
-  return {
-    deals: dealsResult.rows,
-    pipeline: pipelineResult.rows,
-    revenue: revenueResult.rows,
-    salesTargets: salesTargets,
-    lastUpdated: new Date().toISOString()
-  };
-}
-
-/**
- * 月別売上目標の取得（settingsテーブルから）
- */
-function getSalesTargetSettings() {
-  var result = tursoQuery("SELECT key, value FROM settings WHERE key LIKE 'sales_target_%' ORDER BY key");
-  var targets = {};
-  (result.rows || []).forEach(function(r) {
-    var monthKey = r.key.replace('sales_target_', '');
-    targets[monthKey] = Number(r.value || 0);
-  });
-  return { targets: targets };
-}
-
-/**
- * 月別売上目標の保存（settingsテーブルへ）
- */
-function saveSalesTargetSettings(data) {
-  var statements = [];
-  Object.keys(data).forEach(function(month) {
-    var key = 'sales_target_' + month;
-    var value = String(data[month] || 0);
-    statements.push({
-      sql: "INSERT INTO settings (key, value, updated_at) VALUES (?, ?, datetime('now')) ON CONFLICT(key) DO UPDATE SET value = ?, updated_at = datetime('now')",
-      args: [
-        { type: 'text', value: key },
-        { type: 'text', value: value },
-        { type: 'text', value: value }
-      ]
-    });
-  });
-  if (statements.length > 0) {
-    tursoExecute_(statements);
-  }
-  return { success: true };
-}
-
-/**
- * deal登録・更新
- */
-function upsertDeal(data) {
-  if (!data.deal_name || !data.owner) {
-    throw new Error('deal_name と owner は必須です');
-  }
-
-  if (data.id) {
-    var setClauses = [];
-    var args = [];
-    var fields = ['deal_name', 'company_name', 'owner', 'project_name', 'phase', 'deal_type',
-                   'amount', 'probability', 'expected_start_date',
-                   'next_action', 'action_deadline', 'memo'];
-    fields.forEach(function(f) {
-      if (data[f] !== undefined) {
-        setClauses.push(f + ' = ?');
-        args.push({ type: 'text', value: String(data[f]) });
-      }
-    });
-    setClauses.push("updated_at = datetime('now')");
-    args.push({ type: 'text', value: data.id });
-
-    tursoExecute_([{
-      sql: 'UPDATE deals SET ' + setClauses.join(', ') + ' WHERE id = ?',
-      args: args
-    }]);
-    return { success: true, action: 'updated', id: data.id };
-  } else {
-    tursoExecute_([{
-      sql: 'INSERT INTO deals (deal_name, company_name, owner, project_name, phase, deal_type, amount, probability, expected_start_date, next_action, action_deadline, memo) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)',
-      args: [
-        { type: 'text', value: data.deal_name || '' },
-        { type: 'text', value: data.company_name || '' },
-        { type: 'text', value: data.owner || '' },
-        { type: 'text', value: data.project_name || '' },
-        { type: 'text', value: data.phase || '提案前' },
-        { type: 'text', value: data.deal_type || '新規' },
-        { type: 'text', value: String(data.amount || 0) },
-        { type: 'text', value: String(data.probability || 0) },
-        { type: 'text', value: data.expected_start_date || '' },
-        { type: 'text', value: data.next_action || '' },
-        { type: 'text', value: data.action_deadline || '' },
-        { type: 'text', value: data.memo || '' },
-      ]
-    }]);
-    return { success: true, action: 'created' };
-  }
-}
-
-/**
- * deal削除
- */
-function deleteDeal(id) {
-  if (!id) throw new Error('id は必須です');
-  tursoExecute_([{
-    sql: 'DELETE FROM deals WHERE id = ?',
-    args: [{ type: 'text', value: id }]
-  }]);
-  return { success: true, action: 'deleted', id: id };
-}
-
-/**
- * target登録・更新（UPSERT）
- */
-function upsertTarget(data) {
-  if (!data.member_name || !data.project_name || !data.target_month) {
-    throw new Error('member_name, project_name, target_month は必須です');
-  }
-
-  tursoExecute_([{
-    sql: "INSERT INTO targets (member_name, project_name, target_month, target_calls, target_appointments, target_work_hours, calls_per_hour_target, call_to_appo_target, sales_target) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?) ON CONFLICT(member_name, project_name, target_month) DO UPDATE SET target_calls = ?, target_appointments = ?, target_work_hours = ?, calls_per_hour_target = ?, call_to_appo_target = ?, sales_target = ?, updated_at = datetime('now')",
-    args: [
-      { type: 'text', value: data.member_name },
-      { type: 'text', value: data.project_name },
-      { type: 'text', value: data.target_month },
-      { type: 'text', value: String(data.target_calls || 0) },
-      { type: 'text', value: String(data.target_appointments || 0) },
-      { type: 'text', value: String(data.target_work_hours || 0) },
-      { type: 'text', value: String(data.calls_per_hour_target || '') },
-      { type: 'text', value: String(data.call_to_appo_target || '') },
-      { type: 'text', value: String(data.sales_target || 0) },
-      { type: 'text', value: String(data.target_calls || 0) },
-      { type: 'text', value: String(data.target_appointments || 0) },
-      { type: 'text', value: String(data.target_work_hours || 0) },
-      { type: 'text', value: String(data.calls_per_hour_target || '') },
-      { type: 'text', value: String(data.call_to_appo_target || '') },
-      { type: 'text', value: String(data.sales_target || 0) },
-    ]
-  }]);
-  return { success: true, action: 'upserted' };
-}
-
 function testTursoConnection() {
-  var result = tursoQuery('SELECT COUNT(*) as cnt FROM deals');
-  Logger.log('Turso deals count: ' + result.rows[0].cnt);
-}
-
-function testGetPipelineDataV2() {
-  var result = getPipelineDataV2();
-  Logger.log(JSON.stringify(result, null, 2));
+  var result = tursoQuery('SELECT COUNT(*) as cnt FROM performance_rawdata');
+  Logger.log('Turso performance_rawdata count: ' + result.rows[0].cnt);
 }
 
 // ========================================
