@@ -78,8 +78,34 @@ function parseResultRows_(result) {
 }
 
 /**
+ * 日本の国民の祝日（ハードコード版）
+ * カレンダーAPIが利用できない場合のフォールバック。
+ * 春分・秋分は年ごとに変動するので年別に定義。
+ */
+var JP_HOLIDAYS_HARDCODED_ = {
+  2025: [
+    '2025-01-01','2025-01-13','2025-02-11','2025-02-23','2025-02-24',
+    '2025-03-20','2025-04-29','2025-05-03','2025-05-04','2025-05-05','2025-05-06',
+    '2025-07-21','2025-08-11','2025-09-15','2025-09-23','2025-10-13',
+    '2025-11-03','2025-11-23','2025-11-24'
+  ],
+  2026: [
+    '2026-01-01','2026-01-12','2026-02-11','2026-02-23',
+    '2026-03-20','2026-04-29','2026-05-03','2026-05-04','2026-05-05','2026-05-06',
+    '2026-07-20','2026-08-11','2026-09-21','2026-09-22','2026-09-23','2026-10-12',
+    '2026-11-03','2026-11-23'
+  ],
+  2027: [
+    '2027-01-01','2027-01-11','2027-02-11','2027-02-23',
+    '2027-03-21','2027-03-22','2027-04-29','2027-05-03','2027-05-04','2027-05-05',
+    '2027-07-19','2027-08-11','2027-09-20','2027-09-23','2027-10-11',
+    '2027-11-03','2027-11-23'
+  ]
+};
+
+/**
  * 稼働日数を計算する（土日 + 祝日を除外）
- * GoogleカレンダーAPIで日本の祝日を取得
+ * GoogleカレンダーAPIで日本の祝日を取得、失敗時はハードコード版にフォールバック
  * @param {number} year
  * @param {number} month (1-12)
  * @returns {{ totalDays: number, elapsedDays: number, standardProgress: number }}
@@ -96,6 +122,7 @@ function calculateBusinessDays_(year, month) {
     '勤労感謝の日', '振替休日', '国民の休日'
   ];
   var holidays = {};
+  var calendarOk = false;
   try {
     var cal = CalendarApp.getCalendarById('ja.japanese#holiday@group.v.calendar.google.com');
     if (cal) {
@@ -107,9 +134,21 @@ function calculateBusinessDays_(year, month) {
         var key = Utilities.formatDate(d, 'Asia/Tokyo', 'yyyy-MM-dd');
         holidays[key] = true;
       });
+      calendarOk = true;
     }
   } catch (e) {
-    // カレンダーAPIが利用できない場合は祝日なしで計算
+    // カレンダーAPIが利用できない場合はハードコード版を使う
+  }
+
+  // カレンダーAPIで取得できなかった場合はハードコード版にフォールバック
+  if (!calendarOk || Object.keys(holidays).length === 0) {
+    var hardcoded = JP_HOLIDAYS_HARDCODED_[year] || [];
+    var monthPrefix = year + '-' + String(month).padStart(2, '0') + '-';
+    hardcoded.forEach(function(dateStr) {
+      if (dateStr.indexOf(monthPrefix) === 0) {
+        holidays[dateStr] = true;
+      }
+    });
   }
 
   var totalDays = 0;
@@ -150,7 +189,7 @@ function calculateBusinessDays_(year, month) {
  */
 function getBusinessDaysCached_(year, month) {
   var cache = CacheService.getScriptCache();
-  var cacheKey = 'bizdays_v2_' + year + '_' + month;
+  var cacheKey = 'bizdays_v3_' + year + '_' + month;
   var cached = cache.get(cacheKey);
 
   if (cached) {
@@ -358,7 +397,7 @@ function getTeamSalesFromSheet_(monthNum) {
   if (colIndex < 0) return { salesTarget: 0, confirmedSales: 0 };
 
   var salesTarget = parseCurrency_(sheet.getRange(4, colIndex).getValue());
-  var confirmedSales = parseCurrency_(sheet.getRange(24, colIndex).getValue());
+  var confirmedSales = parseCurrency_(sheet.getRange(25, colIndex).getValue());
 
   return { salesTarget: salesTarget, confirmedSales: confirmedSales };
 }
